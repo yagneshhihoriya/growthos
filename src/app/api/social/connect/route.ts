@@ -227,7 +227,7 @@ async function handleCallback(request: Request, sellerId: string, code: string, 
       // pages access may fail
     }
 
-    if (instagramAccountId && stored.platform === "instagram") {
+    if (instagramAccountId) {
       try {
         const unameRes = await axios.get<{ username?: string }>(
           `https://graph.facebook.com/v19.0/${instagramAccountId}`,
@@ -243,40 +243,52 @@ async function handleCallback(request: Request, sellerId: string, code: string, 
 
     const scopeSchema = z.array(z.string());
     const scopesGranted = scopeSchema.safeParse(SCOPES.split(",")).data ?? [];
+    const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
 
-    await db.socialConnection.upsert({
-      where: { sellerId_platform: { sellerId, platform: stored.platform } },
-      create: {
-        sellerId,
-        platform: stored.platform,
-        platformUserId,
-        instagramUsername,
-        pageId,
-        instagramAccountId,
-        accessTokenEnc: ciphertext,
-        tokenIv: iv,
-        tokenTag: tag,
-        tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
-        scopesGranted,
-        isActive: true,
-      },
-      update: {
-        platformUserId,
-        instagramUsername,
-        pageId,
-        instagramAccountId,
-        accessTokenEnc: ciphertext,
-        tokenIv: iv,
-        tokenTag: tag,
-        tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
-        scopesGranted,
-        isActive: true,
-        lastRefreshedAt: new Date(),
-      },
-    });
+    // The same Meta access token powers both Instagram Graph API (via the
+    // linked IG Business account) and Facebook Pages. One OAuth click should
+    // wire up both rows so the user doesn't have to authorize twice.
+    const platformsSet = new Set<"instagram" | "facebook">([stored.platform]);
+    if (instagramAccountId) platformsSet.add("instagram");
+    if (pageId) platformsSet.add("facebook");
+    const platformsToWire: Array<"instagram" | "facebook"> = Array.from(platformsSet);
 
+    for (const platform of platformsToWire) {
+      await db.socialConnection.upsert({
+        where: { sellerId_platform: { sellerId, platform } },
+        create: {
+          sellerId,
+          platform,
+          platformUserId,
+          instagramUsername: platform === "instagram" ? instagramUsername : null,
+          pageId,
+          instagramAccountId: platform === "instagram" ? instagramAccountId : null,
+          accessTokenEnc: ciphertext,
+          tokenIv: iv,
+          tokenTag: tag,
+          tokenExpiresAt,
+          scopesGranted,
+          isActive: true,
+        },
+        update: {
+          platformUserId,
+          instagramUsername: platform === "instagram" ? instagramUsername : null,
+          pageId,
+          instagramAccountId: platform === "instagram" ? instagramAccountId : null,
+          accessTokenEnc: ciphertext,
+          tokenIv: iv,
+          tokenTag: tag,
+          tokenExpiresAt,
+          scopesGranted,
+          isActive: true,
+          lastRefreshedAt: new Date(),
+        },
+      });
+    }
+
+    const connectedList = platformsToWire.join(",");
     return NextResponse.redirect(
-      new URL(`/profile?connected=${stored.platform}`, request.url)
+      new URL(`/profile?connected=${connectedList}`, request.url)
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Connection failed";
