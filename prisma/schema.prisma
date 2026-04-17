@@ -1,0 +1,274 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Seller {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String
+  avatarUrl       String?
+  phone           String?
+  shopName        String?
+  city            String    @default("Surat")
+  passwordHash    String?
+  googleId        String?   @unique
+  metaId          String?   @unique
+  plan            String    @default("free")
+  isEmailVerified Boolean   @default(false)
+  isPhoneVerified Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  lastLoginAt     DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  sessions          Session[]
+  socialConnections SocialConnection[]
+  accounts          Account[]
+  products          Product[]
+  imageJobs         ImageJob[]
+  imageBatches      ImageBatch[]
+  watermarkPresets  WatermarkPreset[]
+  socialPosts         SocialPost[]
+  postAnalytics       PostAnalytic[]
+  autopilotCalendars  AutopilotCalendar[]
+
+  @@index([email])
+  @@index([googleId])
+  @@index([metaId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  sellerId          String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  seller            Seller  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id          String    @id @default(cuid())
+  sessionToken String   @unique
+  sellerId    String
+  tokenHash   String?   @unique
+  deviceInfo  Json?
+  expires     DateTime
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  seller      Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+  @@index([expires])
+}
+
+model VerificationToken {
+  id        String    @id @default(cuid())
+  email     String
+  token     String    @unique
+  type      String    @default("email_verify")
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+  @@index([token])
+}
+
+model SocialConnection {
+  id                 String    @id @default(cuid())
+  sellerId           String
+  platform           String
+  platformUserId     String
+  instagramUsername  String?
+  pageId             String?
+  instagramAccountId String?
+  accessTokenEnc     Bytes
+  tokenIv            Bytes
+  tokenTag           Bytes
+  tokenExpiresAt     DateTime?
+  scopesGranted      String[]  @default([])
+  isActive           Boolean   @default(true)
+  connectedAt        DateTime  @default(now())
+  lastRefreshedAt    DateTime?
+  seller             Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@unique([sellerId, platform])
+  @@index([sellerId])
+}
+
+model Product {
+  id              String    @id @default(cuid())
+  sellerId        String
+  name            String
+  category        String?
+  price           Decimal?  @db.Decimal(10, 2)
+  colors          String[]  @default([])
+  sizes           String[]  @default([])
+  fabric          String?
+  occasion        String[]  @default([])
+  rawImageUrls    String[]  @default([])
+  processedImages Json?
+  marketplaceIds  Json?
+  optimizedTitles Json?
+  description     String?   @db.Text
+  keywords        String[]  @default([])
+  stockQuantity   Int       @default(0)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  seller          Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  imageJobs       ImageJob[]
+  socialPosts     SocialPost[]
+
+  @@index([sellerId])
+  @@index([sellerId, category])
+  @@index([isActive])
+}
+
+model SocialPost {
+  id            String         @id @default(cuid())
+  sellerId      String
+  productId     String?
+  imageUrl      String
+  caption       String         @db.Text
+  hashtags      String[]       @default([])
+  platforms     String[]       @default([])
+  status        String         @default("draft")
+  scheduledFor  DateTime?
+  publishedAt   DateTime?
+  igPostId      String?
+  fbPostId      String?
+  igPostUrl     String?
+  fbPostUrl     String?
+  errorMsg      String?
+  retryCount    Int            @default(0)
+  isAutopilot   Boolean        @default(false)
+  autopilotDay  Int?
+  createdAt     DateTime       @default(now())
+  seller        Seller         @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  product       Product?       @relation(fields: [productId], references: [id])
+  analytics     PostAnalytic[]
+
+  @@index([sellerId])
+  @@index([status, scheduledFor])
+}
+
+model PostAnalytic {
+  id            String     @id @default(cuid())
+  postId        String
+  sellerId      String
+  reach         Int        @default(0)
+  impressions   Int        @default(0)
+  likes         Int        @default(0)
+  comments      Int        @default(0)
+  saves         Int        @default(0)
+  profileVisits Int        @default(0)
+  linkClicks    Int        @default(0)
+  fetchedAt     DateTime   @default(now())
+  post          SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  seller        Seller     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, fetchedAt])
+  @@index([postId])
+  @@index([sellerId])
+}
+
+model AutopilotCalendar {
+  id           String    @id @default(cuid())
+  sellerId     String
+  month        Int
+  year         Int
+  status       String    @default("draft")
+  totalPosts   Int       @default(30)
+  approvedAt   DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  seller       Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@unique([sellerId, month, year])
+  @@index([sellerId])
+}
+
+model ImageBatch {
+  id             String    @id @default(cuid())
+  sellerId       String
+  totalImages    Int
+  processedCount Int       @default(0)
+  failedCount    Int       @default(0)
+  status         String    @default("running")
+  options        Json?
+  pusherChannel  String?
+  zipDownloadUrl String?
+  zipExpiresAt   DateTime?
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
+  seller         Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  imageJobs      ImageJob[]
+
+  @@index([sellerId])
+  @@index([status])
+  @@index([sellerId, status])
+}
+
+model ImageJob {
+  id            String      @id @default(cuid())
+  sellerId      String
+  batchId       String?
+  productId     String?
+  jobIndex      Int         @default(0)
+  originalUrl   String
+  originalKey   String?
+  processedUrls Json?
+  bgRemovedUrl  String?
+  status        String      @default("pending")
+  options       Json?
+  errorMsg      String?
+  retryCount    Int         @default(0)
+  processingMs  Int?
+  apiUsed       String?
+  createdAt     DateTime    @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+  seller        Seller      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  batch         ImageBatch? @relation(fields: [batchId], references: [id])
+  product       Product?    @relation(fields: [productId], references: [id])
+
+  @@index([sellerId])
+  @@index([status])
+  @@index([batchId])
+  @@index([batchId, status])
+}
+
+model WatermarkPreset {
+  id          String   @id @default(cuid())
+  sellerId    String
+  name        String   @default("Default")
+  logoUrl     String?
+  logoKey     String?
+  textContent String?
+  fontFamily  String   @default("Inter")
+  textColor   String   @default("#ffffff")
+  position    String   @default("bottom-right")
+  opacity     Float    @default(0.25)
+  scale       Float    @default(0.15)
+  padding     Int      @default(20)
+  isDefault   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  seller      Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+}

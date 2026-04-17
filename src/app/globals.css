@@ -2,26 +2,219 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+/* ── DARK THEME (default, before hydration) ── */
+:root,
+[data-theme="dark"] {
+  --bg-base: #0a0a0a;
+  --bg-surface: #121212;
+  --bg-elevated: #1a1a1a;
+  --bg-overlay: #262626;
+  --bg-hover: rgba(255, 255, 255, 0.045);
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #52525b;
+  --text-disabled: #3f3f46;
+
+  --brand: #f97316;
+  --brand-hover: #ea6d10;
+  --brand-muted: rgba(249, 115, 22, 0.08);
+  --brand-border: rgba(249, 115, 22, 0.32);
+
+  --success: #22c55e;
+  --success-muted: rgba(34, 197, 94, 0.12);
+  --warning: #eab308;
+  --warning-muted: rgba(234, 179, 8, 0.12);
+  --error: #ef4444;
+  --error-muted: rgba(239, 68, 68, 0.12);
+  --info: #3b82f6;
+  --info-muted: rgba(59, 130, 246, 0.12);
+
+  --feature-photo: #a855f7;
+  --feature-social: #06b6d4;
+  --feature-whatsapp: #22c55e;
+  --feature-titles: #f59e0b;
+  --feature-festival: #ec4899;
+  --feature-reviews: #3b82f6;
+  --feature-prices: #14b8a6;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.7);
+  /* Orange glow — primary CTAs, active nav, badges (use sparingly) */
+  --shadow-brand: 0 0 0 1px rgba(249, 115, 22, 0.22), 0 0 24px rgba(249, 115, 22, 0.18),
+    0 8px 28px rgba(249, 115, 22, 0.1);
+  --shadow-brand-sm: 0 0 0 1px rgba(249, 115, 22, 0.35), 0 0 14px rgba(249, 115, 22, 0.45);
+  --shadow-brand-glow: 0 0 0 1px rgba(249, 115, 22, 0.28), 0 0 32px rgba(249, 115, 22, 0.22),
+    0 10px 36px rgba(249, 115, 22, 0.12);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --card-ring: rgba(255, 255, 255, 0.05);
+
+  --badge-bg: rgba(255, 255, 255, 0.06);
+  --badge-fg: var(--text-secondary);
+  --badge-border: var(--border-subtle);
+
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+
+  --theme-toggle-track: var(--bg-elevated);
+  --toggle-thumb: #e4e4e7;
+  --auth-spot-1: rgba(249, 115, 22, 0.1);
+  --auth-spot-2: rgba(168, 85, 247, 0.1);
+  --auth-spot-register-2: rgba(6, 182, 212, 0.1);
+
+  --oauth-meta-bg: #1877f2;
+  --oauth-meta-hover: #166fe5;
+
+  --sidebar-width: 240px;
+  --sidebar-collapsed: 64px;
+  --topbar-height: 56px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  --ease-default: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  html[data-theme="system"] {
+    --bg-base: #0a0a0a;
+    --bg-surface: #121212;
+    --bg-elevated: #1a1a1a;
+    --bg-overlay: #262626;
+    --bg-hover: rgba(255, 255, 255, 0.045);
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-default: rgba(255, 255, 255, 0.1);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-tertiary: #52525b;
+    --text-disabled: #3f3f46;
+    --brand: #f97316;
+    --brand-hover: #ea6d10;
+    --brand-muted: rgba(249, 115, 22, 0.08);
+    --brand-border: rgba(249, 115, 22, 0.32);
+    --success: #22c55e;
+    --success-muted: rgba(34, 197, 94, 0.12);
+    --warning: #eab308;
+    --warning-muted: rgba(234, 179, 8, 0.12);
+    --error: #ef4444;
+    --error-muted: rgba(239, 68, 68, 0.12);
+    --info: #3b82f6;
+    --info-muted: rgba(59, 130, 246, 0.12);
+    --feature-photo: #a855f7;
+    --feature-social: #06b6d4;
+    --feature-whatsapp: #22c55e;
+    --feature-titles: #f59e0b;
+    --feature-festival: #ec4899;
+    --feature-reviews: #3b82f6;
+    --feature-prices: #14b8a6;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.7);
+    --shadow-brand: 0 0 0 1px rgba(249, 115, 22, 0.22), 0 0 24px rgba(249, 115, 22, 0.18),
+      0 8px 28px rgba(249, 115, 22, 0.1);
+    --shadow-brand-sm: 0 0 0 1px rgba(249, 115, 22, 0.35), 0 0 14px rgba(249, 115, 22, 0.45);
+    --shadow-brand-glow: 0 0 0 1px rgba(249, 115, 22, 0.28), 0 0 32px rgba(249, 115, 22, 0.22),
+      0 10px 36px rgba(249, 115, 22, 0.12);
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    --card-ring: rgba(255, 255, 255, 0.05);
+    --badge-bg: rgba(255, 255, 255, 0.06);
+    --badge-fg: var(--text-secondary);
+    --badge-border: var(--border-subtle);
+    --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+    --theme-toggle-track: var(--bg-elevated);
+    --toggle-thumb: #e4e4e7;
+    --auth-spot-1: rgba(249, 115, 22, 0.1);
+    --auth-spot-2: rgba(168, 85, 247, 0.1);
+    --auth-spot-register-2: rgba(6, 182, 212, 0.1);
   }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+*,
+*::before,
+*::after {
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 150ms ease,
+    box-shadow 200ms ease;
+}
+
+button,
+a,
+input,
+textarea,
+select,
+[role="button"] {
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 100ms ease,
+    opacity 150ms ease,
+    transform 100ms ease,
+    box-shadow 150ms ease;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--brand) 28%, transparent);
+  color: var(--text-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+code,
+pre,
+.mono {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
 }

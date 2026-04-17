@@ -1,4 +1,8 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
+const nextConfig = {
+  experimental: {
+    serverComponentsExternalPackages: ["sharp", "ioredis", "bullmq"],
+  },
+};
 
 export default nextConfig;
