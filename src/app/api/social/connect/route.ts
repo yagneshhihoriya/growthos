@@ -1,15 +1,65 @@
 import { NextResponse } from "next/server";
-import { nanoid } from "nanoid";
+import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
 import axios from "axios";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { cache } from "@/lib/cache";
 import { encrypt } from "@/lib/crypto";
 import { db } from "@/lib/db";
 
 const META_APP_ID = () => process.env.META_CLIENT_ID ?? "";
 const META_APP_SECRET = () => process.env.META_CLIENT_SECRET ?? "";
 const BASE_URL = () => process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+
+/**
+ * Signed OAuth `state` = `platform.sellerId.nonce.expiresAtMs.hmac`.
+ * Uses NEXTAUTH_SECRET (already required by the app) — no Redis needed,
+ * so the flow works on Vercel without provisioning extra infra.
+ */
+const STATE_TTL_MS = 10 * 60 * 1000;
+
+function stateSigningSecret(): string {
+  const s = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
+  if (!s) throw new Error("NEXTAUTH_SECRET is required to sign OAuth state");
+  return s;
+}
+
+function b64url(buf: Buffer | string): string {
+  return Buffer.from(buf).toString("base64url");
+}
+
+function signState(payload: string): string {
+  return createHmac("sha256", stateSigningSecret()).update(payload).digest("base64url");
+}
+
+function buildState(sellerId: string, platform: "instagram" | "facebook"): string {
+  const nonce = b64url(randomBytes(16));
+  const expiresAt = Date.now() + STATE_TTL_MS;
+  const payload = `${platform}.${b64url(sellerId)}.${nonce}.${expiresAt}`;
+  const sig = signState(payload);
+  return `${payload}.${sig}`;
+}
+
+function parseState(
+  state: string
+): { platform: "instagram" | "facebook"; sellerId: string } | null {
+  const parts = state.split(".");
+  if (parts.length !== 5) return null;
+  const [platform, sellerIdB64, nonce, expiresAtStr, sig] = parts;
+  if (platform !== "instagram" && platform !== "facebook") return null;
+  const expiresAt = Number(expiresAtStr);
+  if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) return null;
+  const payload = `${platform}.${sellerIdB64}.${nonce}.${expiresAtStr}`;
+  const expected = signState(payload);
+  const a = Buffer.from(expected);
+  const b = Buffer.from(sig);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  try {
+    const sellerId = Buffer.from(sellerIdB64, "base64url").toString("utf8");
+    return { platform, sellerId };
+  } catch {
+    return null;
+  }
+}
 
 export async function DELETE(request: Request) {
   const session = await auth();
@@ -81,26 +131,26 @@ export async function GET(request: Request) {
   return NextResponse.json({ error: "Missing platform parameter" }, { status: 400 });
 }
 
-async function initiateConnect(sellerId: string, platform: string) {
-  const csrfState = nanoid(32);
-  await cache.set(`csrf:social:${csrfState}`, { sellerId, platform }, 600);
+async function initiateConnect(sellerId: string, platform: "instagram" | "facebook") {
+  const signedState = buildState(sellerId, platform);
 
   const redirectUri = `${BASE_URL()}/api/social/connect`;
   const authUrl = new URL("https://www.facebook.com/v19.0/dialog/oauth");
   authUrl.searchParams.set("client_id", META_APP_ID());
   authUrl.searchParams.set("redirect_uri", redirectUri);
   authUrl.searchParams.set("scope", SCOPES);
-  authUrl.searchParams.set("state", csrfState);
+  authUrl.searchParams.set("state", signedState);
   authUrl.searchParams.set("response_type", "code");
 
   return NextResponse.json({ authUrl: authUrl.toString() });
 }
 
 async function handleCallback(request: Request, sellerId: string, code: string, state: string) {
-  const stored = await cache.getAndDel<{ sellerId: string; platform: string }>(`csrf:social:${state}`);
-  if (!stored || stored.sellerId !== sellerId) {
+  const parsed = parseState(state);
+  if (!parsed || parsed.sellerId !== sellerId) {
     return NextResponse.redirect(new URL("/dashboard?error=csrf_mismatch", request.url));
   }
+  const stored = { sellerId: parsed.sellerId, platform: parsed.platform };
 
   try {
     const redirectUri = `${BASE_URL()}/api/social/connect`;
