@@ -1,6 +1,22 @@
 import { GoogleGenAI, type GenerateContentResponse } from "@google/genai";
 
 const CAPTION_MODEL = process.env.GEMINI_CAPTION_MODEL?.trim() || "gemini-2.5-flash";
+/** If the primary model 503's, try this one next (can be overridden via env). */
+const CAPTION_FALLBACK_MODEL =
+  process.env.GEMINI_CAPTION_FALLBACK_MODEL?.trim() || "gemini-2.0-flash";
+
+function isTransient(err: unknown): boolean {
+  const e = err as { status?: number; code?: number; message?: string } | null;
+  if (!e) return false;
+  const code = e.status ?? e.code;
+  if (code === 429 || code === 500 || code === 502 || code === 503 || code === 504) return true;
+  const msg = String(e.message ?? "");
+  return /UNAVAILABLE|RESOURCE_EXHAUSTED|INTERNAL|high demand|overloaded/i.test(msg);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
 export type CaptionGenInput = {
   productName: string;
@@ -73,14 +89,14 @@ function textFromStreamChunk(chunk: unknown): string {
   return "";
 }
 
-/** Async iterator of UTF-8 text deltas for streaming HTTP responses. */
-export async function* streamCaptionJson(input: CaptionGenInput): AsyncGenerator<string> {
-  const apiKey = requireGeminiKey();
-  const ai = new GoogleGenAI({ apiKey });
-  const { system, user } = buildPrompts(input);
-
-  const stream = await ai.models.generateContentStream({
-    model: CAPTION_MODEL,
+async function openStream(
+  ai: GoogleGenAI,
+  model: string,
+  system: string,
+  user: string
+): Promise<AsyncIterable<GenerateContentResponse>> {
+  return ai.models.generateContentStream({
+    model,
     contents: [{ role: "user", parts: [{ text: user }] }],
     config: {
       systemInstruction: system,
@@ -90,9 +106,38 @@ export async function* streamCaptionJson(input: CaptionGenInput): AsyncGenerator
       responseMimeType: "application/json",
     },
   });
+}
 
-  for await (const chunk of stream) {
-    const delta = textFromStreamChunk(chunk);
-    if (delta) yield delta;
+/** Async iterator of UTF-8 text deltas for streaming HTTP responses.
+ *  Retries transient 429/5xx errors with exponential backoff, then falls back
+ *  to a secondary model (e.g. 2.0-flash) if the primary stays overloaded. */
+export async function* streamCaptionJson(input: CaptionGenInput): AsyncGenerator<string> {
+  const apiKey = requireGeminiKey();
+  const ai = new GoogleGenAI({ apiKey });
+  const { system, user } = buildPrompts(input);
+
+  const attempts: Array<{ model: string; delayMs: number }> = [
+    { model: CAPTION_MODEL, delayMs: 0 },
+    { model: CAPTION_MODEL, delayMs: 800 },
+    { model: CAPTION_MODEL, delayMs: 2000 },
+    { model: CAPTION_FALLBACK_MODEL, delayMs: 500 },
+  ];
+
+  let lastErr: unknown = null;
+  for (const { model, delayMs } of attempts) {
+    if (delayMs) await sleep(delayMs);
+    try {
+      const stream = await openStream(ai, model, system, user);
+      for await (const chunk of stream) {
+        const delta = textFromStreamChunk(chunk);
+        if (delta) yield delta;
+      }
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (!isTransient(err)) throw err;
+      console.warn(`[caption-gen] transient error on ${model}, retrying`, err);
+    }
   }
+  throw lastErr ?? new Error("Caption generation failed after retries");
 }
