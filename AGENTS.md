@@ -29,9 +29,13 @@ Next.js 14 App Router + Prisma + NextAuth v5 + S3 + Redis/BullMQ. Photo Studio u
 
 ## Commands
 
-- `npm run dev` — app
-- `npm run db:push` — Prisma schema to DB
+- `npm run dev` — app (loads `.env.local` → **local Postgres**)
+- `npm run db:push` — push schema to **Neon** (uses `.env`)
+- `npm run db:push:local` — push schema to **local Postgres** (uses `.env.local` with override)
+- `npm run db:push:all` — push to both local + Neon (run after every `prisma/schema.prisma` change)
 - `npm run worker:image` — image worker (if used)
 - `npm run worker:social` — BullMQ ticks calling `/api/cron/*` (needs `REDIS_URL`, `CRON_SECRET`, app running)
+
+Note: dev runtime uses `.env.local` (local Postgres); Prisma CLI default uses `.env` (Neon). Always run `db:push:all` on schema changes to keep both in sync.
 
 When architecture changes meaningfully, update **this file in ≤15 lines** or ask the user before growing it.
