@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/publish-posts",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/fetch-insights",
+      "schedule": "30 21 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-meta-tokens",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}
