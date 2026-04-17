@@ -80,14 +80,17 @@ export async function DELETE(request: Request) {
 }
 
 /**
- * Facebook Login for Business / Instagram Graph API scopes.
- * `instagram_basic` and legacy names were deprecated (2025); use `instagram_business_*`.
- * @see https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/content-publishing/
+ * Facebook Login scopes for Instagram Graph API (Instagram Business account
+ * linked to a Facebook Page). The `instagram_business_*` aliases Meta shows in
+ * some dashboards are not accepted by the OAuth endpoint — use the canonical
+ * names below.
+ * @see https://developers.facebook.com/docs/permissions/
  */
 const SCOPES = [
-  "instagram_business_basic",
+  "public_profile",
+  "instagram_basic",
   "instagram_content_publish",
-  "instagram_business_manage_comments",
+  "instagram_manage_comments",
   "pages_show_list",
   "pages_read_engagement",
   "pages_manage_posts",
