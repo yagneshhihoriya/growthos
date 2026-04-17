@@ -86,7 +86,12 @@ export function useImageUpload(): UseImageUploadReturn {
           }),
         });
 
-        if (!presignRes.ok) throw new Error("Presign failed");
+        if (!presignRes.ok) {
+          const errJson = await presignRes.json().catch(() => ({}));
+          const serverMsg =
+            typeof errJson?.error === "string" ? errJson.error : presignRes.statusText;
+          throw new Error(`Presign failed: ${serverMsg}`);
+        }
         const { uploadUrl, publicUrl } = (await presignRes.json()) as {
           uploadUrl: string;
           publicUrl: string;
@@ -107,10 +112,21 @@ export function useImageUpload(): UseImageUploadReturn {
             }
           };
           xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) resolve();
-            else reject(new Error(`Upload failed: ${xhr.status}`));
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve();
+            } else {
+              // Most common cause on Vercel: S3 bucket CORS does not allow the
+              // current origin. The S3 error body usually says "AllowedOrigin".
+              const body = (xhr.responseText || "").slice(0, 240);
+              reject(new Error(`S3 ${xhr.status}: ${body || "see S3 CORS / bucket permissions"}`));
+            }
           };
-          xhr.onerror = () => reject(new Error("Network error"));
+          xhr.onerror = () =>
+            reject(
+              new Error(
+                "Upload network error — likely S3 CORS blocking this origin. See README / AWS S3 bucket CORS config."
+              )
+            );
           xhr.open("PUT", uploadUrl);
           xhr.setRequestHeader("Content-Type", item.file.type);
           xhr.send(item.file);

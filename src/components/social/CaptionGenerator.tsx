@@ -14,17 +14,54 @@ export type CaptionVariant = {
   hashtags: string[];
 };
 
-function tryParseCaptionsJson(buffer: string): CaptionVariant[] | null {
-  const start = buffer.indexOf("{");
-  const end = buffer.lastIndexOf("}");
-  if (start === -1 || end <= start) return null;
-  try {
-    const parsed = JSON.parse(buffer.slice(start, end + 1)) as { captions?: CaptionVariant[] };
-    if (!parsed.captions || !Array.isArray(parsed.captions)) return null;
-    return parsed.captions.filter((c) => typeof c.caption === "string");
-  } catch {
-    return null;
+function stripFences(s: string): string {
+  return s.replace(/```(?:json)?/gi, "").replace(/```/g, "").trim();
+}
+
+/** Extract any `{ id, tone, caption, hashtags }` objects from a (possibly
+ *  partial) stream — lets us render cards as chunks arrive even before the
+ *  top-level `captions: [...]` array is closed. */
+function extractCaptionObjects(buffer: string): CaptionVariant[] {
+  const out: CaptionVariant[] = [];
+  const text = stripFences(buffer);
+  // Find start of every `{` that precedes `"caption"` within the next ~600 chars.
+  const re = /\{[^{}]*"caption"\s*:\s*"[^"]*"[^{}]*\}/g;
+  const matches = Array.from(text.match(re) ?? []);
+  for (const raw of matches) {
+    try {
+      const obj = JSON.parse(raw) as Partial<CaptionVariant>;
+      if (typeof obj.caption === "string" && obj.caption.trim()) {
+        out.push({
+          id: typeof obj.id === "number" ? obj.id : out.length + 1,
+          tone: typeof obj.tone === "string" ? obj.tone : "variant",
+          caption: obj.caption,
+          hashtags: Array.isArray(obj.hashtags) ? obj.hashtags.filter((h) => typeof h === "string") : [],
+        });
+      }
+    } catch {
+      // skip malformed chunk — next delta may complete it
+    }
   }
+  return out;
+}
+
+function tryParseCaptionsJson(buffer: string): CaptionVariant[] | null {
+  const text = stripFences(buffer);
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start !== -1 && end > start) {
+    try {
+      const parsed = JSON.parse(text.slice(start, end + 1)) as { captions?: CaptionVariant[] };
+      if (Array.isArray(parsed.captions)) {
+        const clean = parsed.captions.filter((c) => typeof c.caption === "string");
+        if (clean.length) return clean;
+      }
+    } catch {
+      // fall through to partial extraction
+    }
+  }
+  const partial = extractCaptionObjects(text);
+  return partial.length ? partial : null;
 }
 
 export function CaptionGenerator({

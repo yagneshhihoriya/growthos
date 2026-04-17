@@ -84,7 +84,10 @@ export async function* streamCaptionJson(input: CaptionGenInput): AsyncGenerator
     contents: [{ role: "user", parts: [{ text: user }] }],
     config: {
       systemInstruction: system,
-      maxOutputTokens: 1500,
+      maxOutputTokens: 2048,
+      // Force valid JSON output — avoids markdown fences / prose wrapping
+      // that previously broke the client parser.
+      responseMimeType: "application/json",
     },
   });
 
