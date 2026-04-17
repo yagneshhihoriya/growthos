@@ -157,13 +157,16 @@ model SocialPost {
   retryCount    Int            @default(0)
   isAutopilot   Boolean        @default(false)
   autopilotDay  Int?
+  autopilotCalendarId String?
   createdAt     DateTime       @default(now())
   seller        Seller         @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   product       Product?       @relation(fields: [productId], references: [id])
+  autopilotCalendar   AutopilotCalendar? @relation(fields: [autopilotCalendarId], references: [id], onDelete: SetNull)
   analytics     PostAnalytic[]
 
   @@index([sellerId])
   @@index([status, scheduledFor])
+  @@index([autopilotCalendarId])
 }
 
 model PostAnalytic {
@@ -197,6 +200,7 @@ model AutopilotCalendar {
   completedAt  DateTime?
   createdAt    DateTime  @default(now())
   seller       Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  socialPosts  SocialPost[]
 
   @@unique([sellerId, month, year])
   @@index([sellerId])

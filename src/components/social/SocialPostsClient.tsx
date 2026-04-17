@@ -5,6 +5,9 @@ import { formatDistanceToNow } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConnectInstagram } from "@/components/social/ConnectInstagram";
 import { PostComposer } from "@/components/social/PostComposer";
+import { ScheduleCalendar } from "@/components/social/ScheduleCalendar";
+import { PublishedGrid } from "@/components/social/PublishedGrid";
+import { AutopilotWizard } from "@/components/social/AutopilotWizard";
 
 type Connection = { platform: string; isActive: boolean };
 type PostRow = {
@@ -22,6 +25,9 @@ type PostRow = {
 export function SocialPostsClient() {
   const [connections, setConnections] = React.useState<Connection[]>([]);
   const [posts, setPosts] = React.useState<PostRow[]>([]);
+  const [tab, setTab] = React.useState<"compose" | "scheduled" | "published" | "autopilot">(
+    "compose"
+  );
 
   const loadConnections = React.useCallback(async () => {
     const res = await fetch("/api/social/connections");
@@ -52,21 +58,34 @@ export function SocialPostsClient() {
 
       <ConnectInstagram />
 
-      <Tabs defaultValue="compose" className="w-full">
-        <TabsList className="flex h-auto w-full flex-wrap gap-1 bg-white/[0.03] p-1">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="w-full">
+        <TabsList className="flex h-auto w-full gap-1 overflow-x-auto whitespace-nowrap bg-white/[0.03] p-1">
           <TabsTrigger value="compose" className="text-xs sm:text-sm">
-            Compose
+            ✏️ Compose
           </TabsTrigger>
-          <TabsTrigger value="scheduled" disabled className="text-xs text-text-tertiary sm:text-sm">
-            Scheduled <span className="ml-1 rounded bg-white/[0.06] px-1 py-0.5 text-[9px]">Soon</span>
+          <TabsTrigger value="scheduled" className="text-xs sm:text-sm">
+            📅 Scheduled
           </TabsTrigger>
-          <TabsTrigger value="published" disabled className="text-xs text-text-tertiary sm:text-sm">
-            Published <span className="ml-1 rounded bg-white/[0.06] px-1 py-0.5 text-[9px]">Soon</span>
+          <TabsTrigger value="published" className="text-xs sm:text-sm">
+            📊 Published
           </TabsTrigger>
-          <TabsTrigger value="autopilot" disabled className="text-xs text-text-tertiary sm:text-sm">
-            30-Day Autopilot <span className="ml-1 rounded bg-white/[0.06] px-1 py-0.5 text-[9px]">Soon</span>
+          <TabsTrigger value="autopilot" className="text-xs sm:text-sm">
+            🤖 30-Day Auto
+            <span className="ml-1 rounded-full bg-purple-500 px-1.5 py-0.5 text-[8px] font-bold text-white">NEW</span>
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="scheduled" className="mt-4">
+          <ScheduleCalendar />
+        </TabsContent>
+
+        <TabsContent value="published" className="mt-4">
+          <PublishedGrid onGoCompose={() => setTab("compose")} />
+        </TabsContent>
+
+        <TabsContent value="autopilot" className="mt-4">
+          <AutopilotWizard onViewScheduled={() => setTab("scheduled")} />
+        </TabsContent>
 
         <TabsContent value="compose" className="mt-4 space-y-6">
           <PostComposer

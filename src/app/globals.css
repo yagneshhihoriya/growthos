@@ -218,3 +218,37 @@ pre,
 .mono {
   font-family: "JetBrains Mono", "Fira Code", monospace;
 }
+
+/* ---------- FullCalendar dark theme overrides (Phase B) ---------- */
+.fc {
+  --fc-border-color: rgba(255, 255, 255, 0.08);
+  --fc-button-bg-color: rgba(255, 255, 255, 0.04);
+  --fc-button-text-color: var(--text-secondary);
+  --fc-button-border-color: rgba(255, 255, 255, 0.1);
+  --fc-button-hover-bg-color: rgba(255, 255, 255, 0.08);
+  --fc-button-hover-border-color: rgba(255, 255, 255, 0.12);
+  --fc-button-active-bg-color: rgba(168, 85, 247, 0.16);
+  --fc-button-active-border-color: rgba(168, 85, 247, 0.35);
+  --fc-today-bg-color: rgba(168, 85, 247, 0.05);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: rgba(255, 255, 255, 0.02);
+  --fc-list-event-hover-bg-color: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+}
+.fc .fc-toolbar.fc-header-toolbar { margin-bottom: 0.75rem; }
+.fc .fc-toolbar-title { font-size: 1rem; font-weight: 600; color: var(--text-primary); }
+.fc .fc-col-header-cell-cushion { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-tertiary); padding: 0.5rem 0.25rem; }
+.fc .fc-daygrid-day-number { color: var(--text-secondary); font-size: 0.75rem; padding: 0.25rem 0.35rem; }
+.fc .fc-button { font-size: 0.75rem !important; padding: 0.35rem 0.7rem !important; border-radius: 0.5rem !important; }
+.fc .fc-button:focus { box-shadow: none !important; }
+.fc .fc-event { border-radius: 0.35rem; padding: 2px 4px; font-size: 0.7rem; line-height: 1.15; cursor: pointer; border: none; }
+.fc .fc-daygrid-event-dot { display: none; }
+.fc .fc-more-link { font-size: 0.65rem; color: var(--text-tertiary); }
+.fc .fc-day-other .fc-daygrid-day-number { opacity: 0.35; }
+
+/* FullCalendar list view (mobile) */
+.fc .fc-list { background: transparent; border-color: rgba(255,255,255,0.08); }
+.fc .fc-list-day-cushion { background: rgba(255,255,255,0.04) !important; }
+.fc .fc-list-event:hover td { background: rgba(255,255,255,0.04); }
+.fc .fc-list-event-title, .fc .fc-list-event-time { color: var(--text-primary); font-size: 0.8rem; }
+.fc .fc-list-empty { color: var(--text-tertiary); font-size: 0.8rem; }
