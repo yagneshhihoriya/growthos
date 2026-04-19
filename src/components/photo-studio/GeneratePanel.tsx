@@ -136,6 +136,10 @@ export function GeneratePanel({ onGenerationComplete }: { onGenerationComplete?:
 
   const multiCompletedCount = multi.completedCount;
   const multiTotalCount = multi.totalCount || selectedStyles.length;
+  const showMultiResults =
+    mode === "edit" &&
+    multipleMode &&
+    (multi.isGenerating || Object.keys(multi.styleStatuses).length > 0);
 
   return (
     <div className="space-y-6">
@@ -212,112 +216,9 @@ export function GeneratePanel({ onGenerationComplete }: { onGenerationComplete?:
         </div>
       </div>
 
-      <div>
-        <label className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
-          {multipleMode ? "Extra instructions (optional)" : "Your prompt"}
-        </label>
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder={
-            multipleMode
-              ? "e.g. Keep the dupatta draped exactly as shown, avoid pink tones…"
-              : mode === "edit"
-                ? "e.g. Place the product on a marble counter with morning window light…"
-                : "e.g. A red silk saree on a mannequin in a Rajasthani courtyard with soft sunlight…"
-          }
-          rows={multipleMode ? 2 : 4}
-          className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-purple-500/30 focus:outline-none focus:ring-1 focus:ring-purple-500/20"
-        />
-      </div>
-
-      {!multipleMode && (
-        <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">Quick prompts</p>
-          <div className="flex flex-wrap gap-1.5">
-            {QUICK_STUDIO_PROMPTS.map((chip) => (
-              <button
-                key={chip.label}
-                type="button"
-                onClick={() => setPrompt(chip.prompt)}
-                className={cn(
-                  "rounded-full border px-3 py-1.5 text-[11px] font-medium transition-all",
-                  prompt === chip.prompt
-                    ? "border-purple-500/30 bg-purple-500/10 text-purple-300"
-                    : "border-white/[0.08] bg-white/[0.03] text-text-secondary hover:border-white/[0.14] hover:text-text-primary"
-                )}
-              >
-                {chip.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Single-image Generate (hidden when multi-mode is ON) */}
-      {!multipleMode && (
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            disabled={generating || !prompt.trim() || (mode === "edit" && !imageUrl)}
-            onClick={() => void generate()}
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 px-6 text-sm font-bold text-white shadow-[0_6px_20px_-4px_rgba(168,85,247,0.45)] transition-all hover:shadow-[0_8px_28px_-4px_rgba(168,85,247,0.55)] hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
-          >
-            {generating ? (
-              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-            ) : (
-              <Sparkles className="h-4 w-4" />
-            )}
-            Generate
-          </button>
-          {result && (
-            <>
-              <button
-                type="button"
-                onClick={() => void generate()}
-                disabled={generating}
-                className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-sm font-medium text-text-primary transition-colors hover:bg-white/[0.07] disabled:opacity-50"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Regenerate
-              </button>
-              <a
-                href={`${result.generatedUrl}${result.generatedUrl.includes("?") ? "&" : "?"}download=1`}
-                className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-sm font-medium text-text-primary transition-colors hover:bg-white/[0.07]"
-              >
-                <Download className="h-4 w-4" />
-                Download
-              </a>
-              {mode === "edit" && result.originalUrl && (
-                <button
-                  type="button"
-                  onClick={() => setCompare((c) => !c)}
-                  className="text-[13px] font-medium text-purple-400 hover:text-purple-300"
-                >
-                  {compare ? "Hide compare" : "Compare before / after"}
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {!multipleMode && result && (
-        <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-black/20">
-          {compare && mode === "edit" && result.originalUrl ? (
-            <div className="mx-auto max-w-lg p-2">
-              <BeforeAfterSlider beforeUrl={result.originalUrl} afterUrl={result.generatedUrl} />
-            </div>
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={result.generatedUrl} alt="Generated" className="mx-auto max-h-[min(70vh,720px)] w-full object-contain" />
-          )}
-        </div>
-      )}
-
-      {/* Multiple images toggle (edit mode only) */}
+      {/* Multiple images toggle — sits right above the prompt so sellers pick single vs. multi before writing */}
       {mode === "edit" && (
-        <div className="border-t border-white/[0.06] pt-6">
+        <div className="space-y-4">
           <button
             type="button"
             onClick={() => setMultipleMode((v) => !v)}
@@ -351,7 +252,7 @@ export function GeneratePanel({ onGenerationComplete }: { onGenerationComplete?:
           </button>
 
           {multipleMode && (
-            <div className="mt-4 space-y-5">
+            <div className="space-y-5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
               {/* Category */}
               <div>
                 <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
@@ -471,139 +372,238 @@ export function GeneratePanel({ onGenerationComplete }: { onGenerationComplete?:
                   })}
                 </div>
               </div>
+            </div>
+          )}
+        </div>
+      )}
 
-              {/* Multi-generate button */}
+      {/* Prompt textarea — label swaps depending on mode */}
+      <div>
+        <label className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
+          {multipleMode ? "Extra instructions (optional)" : "Your prompt"}
+        </label>
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder={
+            multipleMode
+              ? "e.g. Keep the dupatta draped exactly as shown, avoid pink tones…"
+              : mode === "edit"
+                ? "e.g. Place the product on a marble counter with morning window light…"
+                : "e.g. A red silk saree on a mannequin in a Rajasthani courtyard with soft sunlight…"
+          }
+          rows={multipleMode ? 2 : 4}
+          className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-purple-500/30 focus:outline-none focus:ring-1 focus:ring-purple-500/20"
+        />
+      </div>
+
+      {!multipleMode && (
+        <div>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">Quick prompts</p>
+          <div className="flex flex-wrap gap-1.5">
+            {QUICK_STUDIO_PROMPTS.map((chip) => (
+              <button
+                key={chip.label}
+                type="button"
+                onClick={() => setPrompt(chip.prompt)}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-[11px] font-medium transition-all",
+                  prompt === chip.prompt
+                    ? "border-purple-500/30 bg-purple-500/10 text-purple-300"
+                    : "border-white/[0.08] bg-white/[0.03] text-text-secondary hover:border-white/[0.14] hover:text-text-primary"
+                )}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Primary action — swaps between single and multi based on mode */}
+      {multipleMode ? (
+        <button
+          type="button"
+          onClick={() => void generateMultiple()}
+          disabled={multi.isGenerating || selectedStyles.length === 0 || !imageUrl}
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 px-6 text-sm font-bold text-white shadow-[0_6px_20px_-4px_rgba(168,85,247,0.45)] transition-all hover:shadow-[0_8px_28px_-4px_rgba(168,85,247,0.55)] hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
+        >
+          {multi.isGenerating ? (
+            <>
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              Generating {multiCompletedCount} of {multiTotalCount}…
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" />
+              Generate {selectedStyles.length || ""} image
+              {selectedStyles.length === 1 ? "" : "s"}
+            </>
+          )}
+        </button>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={generating || !prompt.trim() || (mode === "edit" && !imageUrl)}
+            onClick={() => void generate()}
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 px-6 text-sm font-bold text-white shadow-[0_6px_20px_-4px_rgba(168,85,247,0.45)] transition-all hover:shadow-[0_8px_28px_-4px_rgba(168,85,247,0.55)] hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
+          >
+            {generating ? (
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Generate
+          </button>
+          {result && (
+            <>
               <button
                 type="button"
-                onClick={() => void generateMultiple()}
-                disabled={
-                  multi.isGenerating ||
-                  selectedStyles.length === 0 ||
-                  !imageUrl
-                }
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 px-6 text-sm font-bold text-white shadow-[0_6px_20px_-4px_rgba(168,85,247,0.45)] transition-all hover:shadow-[0_8px_28px_-4px_rgba(168,85,247,0.55)] hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
+                onClick={() => void generate()}
+                disabled={generating}
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-sm font-medium text-text-primary transition-colors hover:bg-white/[0.07] disabled:opacity-50"
               >
-                {multi.isGenerating ? (
-                  <>
-                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Generating {multiCompletedCount} of {multiTotalCount}…
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4" />
-                    Generate {selectedStyles.length || ""} image
-                    {selectedStyles.length === 1 ? "" : "s"}
-                  </>
-                )}
+                <RefreshCw className="h-4 w-4" />
+                Regenerate
               </button>
-            </div>
+              <a
+                href={`${result.generatedUrl}${result.generatedUrl.includes("?") ? "&" : "?"}download=1`}
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-sm font-medium text-text-primary transition-colors hover:bg-white/[0.07]"
+              >
+                <Download className="h-4 w-4" />
+                Download
+              </a>
+              {mode === "edit" && result.originalUrl && (
+                <button
+                  type="button"
+                  onClick={() => setCompare((c) => !c)}
+                  className="text-[13px] font-medium text-purple-400 hover:text-purple-300"
+                >
+                  {compare ? "Hide compare" : "Compare before / after"}
+                </button>
+              )}
+            </>
           )}
+        </div>
+      )}
 
-          {/* Results grid — shown as soon as a multi-generation starts */}
-          {multipleMode && (multi.isGenerating || Object.keys(multi.styleStatuses).length > 0) && (
-            <div ref={resultsRef} className="mt-6 border-t border-white/[0.06] pt-6">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-medium text-text-primary">Generated images</h3>
-                  <p className="mt-0.5 text-[11px] text-text-tertiary">
-                    Hover any finished image to download or use it in a post.
-                  </p>
+      {!multipleMode && result && (
+        <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-black/20">
+          {compare && mode === "edit" && result.originalUrl ? (
+            <div className="mx-auto max-w-lg p-2">
+              <BeforeAfterSlider beforeUrl={result.originalUrl} afterUrl={result.generatedUrl} />
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={result.generatedUrl} alt="Generated" className="mx-auto max-h-[min(70vh,720px)] w-full object-contain" />
+          )}
+        </div>
+      )}
+
+      {/* Multi results grid */}
+      {showMultiResults && (
+        <div ref={resultsRef} className="border-t border-white/[0.06] pt-6">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-medium text-text-primary">Generated images</h3>
+              <p className="mt-0.5 text-[11px] text-text-tertiary">
+                Hover any finished image to download or use it in a post.
+              </p>
+            </div>
+            {multi.results.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void downloadAllImages(multi.results)}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.07]"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download all
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {selectedStyles.map((style) => {
+              const config = IMAGE_STYLE_CONFIG[style];
+              const status = multi.styleStatuses[style] ?? "pending";
+              const resultItem = multi.results.find((r) => r.style === style);
+
+              return (
+                <div key={style} className="group relative">
+                  <div className="flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-white/[0.08] bg-black/20">
+                    {status === "pending" && (
+                      <div className="text-center">
+                        <span className="text-2xl">{config.icon}</span>
+                        <p className="mt-1 text-[11px] text-text-tertiary">Waiting…</p>
+                      </div>
+                    )}
+                    {status === "generating" && (
+                      <div className="text-center">
+                        <span className="mx-auto block h-6 w-6 animate-spin rounded-full border-2 border-purple-500/80 border-t-transparent" />
+                        <p className="mt-2 text-[11px] text-text-tertiary">Generating…</p>
+                      </div>
+                    )}
+                    {status === "done" && resultItem && (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={resultItem.imageUrl}
+                          alt={config.label}
+                          className="h-full w-full object-cover"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => void downloadSingleImage(resultItem.imageUrl, style)}
+                            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-neutral-900 shadow-lg"
+                            aria-label={`Download ${config.label}`}
+                          >
+                            <Download className="h-4 w-4" />
+                          </button>
+                          <a
+                            href={`/social-posts?image=${encodeURIComponent(resultItem.imageUrl)}`}
+                            className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-500 text-white shadow-lg"
+                            aria-label={`Use ${config.label} in a post`}
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                          </a>
+                        </div>
+                      </>
+                    )}
+                    {status === "error" && (
+                      <div className="p-2 text-center">
+                        <AlertTriangle className="mx-auto h-5 w-5 text-red-400" />
+                        <p className="mt-1 text-[11px] text-red-300">Failed</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!imageUrl) return;
+                            void multi.generate({
+                              imageUrl,
+                              category: productCategory,
+                              styles: [style],
+                              customInstructions: prompt.trim() || undefined,
+                            });
+                          }}
+                          className="mt-1 text-[11px] text-purple-300 underline underline-offset-2"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-1.5 flex items-center justify-between">
+                    <p className="truncate text-[11px] text-text-tertiary">{config.label}</p>
+                    {status === "done" && (
+                      <span className="text-[11px] text-emerald-400">✓ Done</span>
+                    )}
+                  </div>
                 </div>
-                {multi.results.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => void downloadAllImages(multi.results)}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 text-xs font-medium text-text-primary transition-colors hover:bg-white/[0.07]"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    Download all
-                  </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {selectedStyles.map((style) => {
-                  const config = IMAGE_STYLE_CONFIG[style];
-                  const status = multi.styleStatuses[style] ?? "pending";
-                  const resultItem = multi.results.find((r) => r.style === style);
-
-                  return (
-                    <div key={style} className="group relative">
-                      <div className="flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-white/[0.08] bg-black/20">
-                        {status === "pending" && (
-                          <div className="text-center">
-                            <span className="text-2xl">{config.icon}</span>
-                            <p className="mt-1 text-[11px] text-text-tertiary">Waiting…</p>
-                          </div>
-                        )}
-                        {status === "generating" && (
-                          <div className="text-center">
-                            <span className="mx-auto block h-6 w-6 animate-spin rounded-full border-2 border-purple-500/80 border-t-transparent" />
-                            <p className="mt-2 text-[11px] text-text-tertiary">Generating…</p>
-                          </div>
-                        )}
-                        {status === "done" && resultItem && (
-                          <>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={resultItem.imageUrl}
-                              alt={config.label}
-                              className="h-full w-full object-cover"
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-                              <button
-                                type="button"
-                                onClick={() => void downloadSingleImage(resultItem.imageUrl, style)}
-                                className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-neutral-900 shadow-lg"
-                                aria-label={`Download ${config.label}`}
-                              >
-                                <Download className="h-4 w-4" />
-                              </button>
-                              <a
-                                href={`/social-posts?image=${encodeURIComponent(resultItem.imageUrl)}`}
-                                className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-500 text-white shadow-lg"
-                                aria-label={`Use ${config.label} in a post`}
-                              >
-                                <ArrowRight className="h-4 w-4" />
-                              </a>
-                            </div>
-                          </>
-                        )}
-                        {status === "error" && (
-                          <div className="p-2 text-center">
-                            <AlertTriangle className="mx-auto h-5 w-5 text-red-400" />
-                            <p className="mt-1 text-[11px] text-red-300">Failed</p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (!imageUrl) return;
-                                void multi.generate({
-                                  imageUrl,
-                                  category: productCategory,
-                                  styles: [style],
-                                  customInstructions: prompt.trim() || undefined,
-                                });
-                              }}
-                              className="mt-1 text-[11px] text-purple-300 underline underline-offset-2"
-                            >
-                              Retry
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mt-1.5 flex items-center justify-between">
-                        <p className="truncate text-[11px] text-text-tertiary">{config.label}</p>
-                        {status === "done" && (
-                          <span className="text-[11px] text-emerald-400">✓ Done</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
