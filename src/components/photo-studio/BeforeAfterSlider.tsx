@@ -42,13 +42,12 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl }: { beforeUrl: string; 
     if (e.key === "ArrowRight") setPct((p) => Math.min(100, p + 2));
   }
 
-  // Both layers: same paint path (clip-path on each <img>), translateZ for consistent GPU layers,
-  // and `isolation` on the container so stacked UI does not affect image compositing.
+  // Keep both images on the default decode/resize path. Forcing a compositing layer
+  // (translateZ / backface-visibility) makes the GPU's bilinear downsampler kick in and
+  // softens large source images (e.g. 3000x4000 phone uploads) compared to smaller 1500x1500
+  // generated outputs. `isolation` on the container stops stacked UI from affecting images.
   const sharedImgStyle: React.CSSProperties = {
     imageRendering: "auto",
-    transform: "translateZ(0)",
-    backfaceVisibility: "hidden",
-    WebkitBackfaceVisibility: "hidden",
   };
 
   return (
