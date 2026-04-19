@@ -17,6 +17,11 @@ import {
   loadImageBufferForEdit,
 } from "@/lib/s3-object-access";
 
+// Gemini 3.1 Flash Image Preview (Nano Banana 2) completes in ~4–6s per
+// image. 20s gives ~3x headroom for cold-starts, large inputs, and one
+// retry on a transient 503 without burning Vercel function time.
+export const maxDuration = 20;
+
 const bodySchema = z
   .object({
     mode: z.enum(["edit", "create"]),

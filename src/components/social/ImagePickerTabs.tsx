@@ -2,11 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ImageIcon, Loader2, Package, Upload } from "lucide-react";
+import { ImageIcon, Layers, Loader2, Package, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/lib/toast";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import { cn } from "@/lib/utils";
+import type { LibraryBatchItem, LibraryItem, LibraryJob } from "@/types/library";
+import { IMAGE_STYLE_CONFIG, type ImageStyle } from "@/types/photo-studio";
 
 /** Product fields we prefill into the AI caption form. */
 export type CaptionPrefill = {
@@ -31,17 +33,11 @@ type ProductRow = {
   occasion: string[];
 };
 
-type LibraryJob = {
-  id: string;
-  productId: string | null;
-  originalUrl: string;
-  processedUrls: Record<string, unknown> | null;
-  completedAt: string | null;
-  createdAt: string;
-  product: { id: string; name: string } | null;
-};
+/** Legacy flat response used by the catalog lookup (productId=… path). */
+type LegacyLibraryResponse = { jobs: LibraryJob[]; nextCursor: string | null };
 
-type LibraryResponse = { jobs: LibraryJob[]; nextCursor: string | null };
+/** Grouped response used by the Studio tab grid (no query params). */
+type GroupedLibraryResponse = { items: LibraryItem[] };
 
 /** Shared fallback chain — `generated` is what /api/images/generate writes today,
  *  the others are legacy / platform-specific keys we still respect. */
@@ -52,6 +48,20 @@ function pickImageUrl(job: LibraryJob): string | null {
     if (typeof c === "string" && c.trim()) return c;
   }
   return null;
+}
+
+/** Pick the first usable generated URL from a batch for its cover thumbnail. */
+function batchCoverUrl(batch: LibraryBatchItem): string | null {
+  for (const s of batch.styles) {
+    if (s.imageUrl) return s.imageUrl;
+  }
+  return null;
+}
+
+function styleLabel(styleKey: string | null): string {
+  if (!styleKey) return "Image";
+  const cfg = IMAGE_STYLE_CONFIG[styleKey as ImageStyle];
+  return cfg?.label ?? styleKey;
 }
 
 function formatDate(iso: string | null): string {
@@ -135,23 +145,25 @@ function TabButton({
 /** ===================== Layer 1 ===================== */
 
 function StudioTab({ selected, onPick }: { selected: string; onPick: (url: string) => void }) {
-  const [jobs, setJobs] = React.useState<LibraryJob[]>([]);
-  const [cursor, setCursor] = React.useState<string | null>(null);
+  const [items, setItems] = React.useState<LibraryItem[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [initialLoaded, setInitialLoaded] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [openBatch, setOpenBatch] = React.useState<LibraryBatchItem | null>(null);
 
-  const loadPage = React.useCallback(async (nextCursor: string | null) => {
+  // Grouped mode: no query params → API returns the same shape the Photo
+  // Studio Library grid uses. Capped at 1000 jobs server-side, so we don't
+  // need pagination here.
+  const load = React.useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ take: "20" });
-      if (nextCursor) params.set("cursor", nextCursor);
-      const res = await fetch(`/api/images/library?${params.toString()}`);
-      const json = (await res.json()) as LibraryResponse & { error?: string };
+      const res = await fetch("/api/images/library");
+      const json = (await res.json()) as GroupedLibraryResponse & {
+        error?: string;
+      };
       if (!res.ok) throw new Error(json.error ?? "Failed to load library");
-      setJobs((prev) => (nextCursor ? [...prev, ...json.jobs] : json.jobs));
-      setCursor(json.nextCursor);
+      setItems(Array.isArray(json.items) ? json.items : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load library");
     } finally {
@@ -161,8 +173,8 @@ function StudioTab({ selected, onPick }: { selected: string; onPick: (url: strin
   }, []);
 
   React.useEffect(() => {
-    void loadPage(null);
-  }, [loadPage]);
+    void load();
+  }, [load]);
 
   if (!initialLoaded && loading) {
     return (
@@ -176,7 +188,7 @@ function StudioTab({ selected, onPick }: { selected: string; onPick: (url: strin
     return <p className="py-4 text-sm text-red-300">{error}</p>;
   }
 
-  if (!jobs.length) {
+  if (!items.length) {
     return (
       <div className="rounded-lg border border-dashed border-white/[0.12] p-6 text-center">
         <p className="text-sm text-text-secondary">No processed images yet.</p>
@@ -193,55 +205,252 @@ function StudioTab({ selected, onPick }: { selected: string; onPick: (url: strin
   return (
     <div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-        {jobs.map((j) => {
-          const url = pickImageUrl(j);
-          if (!url) return null;
-          const isSelected = selected === url;
-          return (
-            <button
-              key={j.id}
-              type="button"
-              onClick={() => onPick(url)}
-              className={cn(
-                "group relative overflow-hidden rounded-lg border bg-black/30 text-left transition-colors",
-                isSelected
-                  ? "border-amber-400/80 ring-2 ring-amber-400/40"
-                  : "border-white/[0.08] hover:border-white/[0.2]"
-              )}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={url}
-                alt={j.product?.name ?? "Processed image"}
-                className="aspect-square w-full object-cover"
-                loading="lazy"
-              />
-              <div className="px-2 py-1.5">
-                <p className="truncate text-[11px] font-medium text-text-primary">
-                  {j.product?.name ?? "Untitled"}
-                </p>
-                <p className="text-[10px] text-text-tertiary">
-                  {formatDate(j.completedAt ?? j.createdAt)}
-                </p>
-              </div>
-            </button>
-          );
-        })}
+        {items.map((item) =>
+          item.kind === "single" ? (
+            <SingleTile
+              key={`s-${item.job.id}`}
+              job={item.job}
+              selected={selected}
+              onPick={onPick}
+            />
+          ) : (
+            <BatchTile
+              key={`b-${item.batchId}`}
+              batch={item}
+              selected={selected}
+              onOpen={() => setOpenBatch(item)}
+            />
+          )
+        )}
       </div>
 
-      {cursor ? (
-        <div className="mt-3 flex justify-center">
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => void loadPage(cursor)}
-            disabled={loading}
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load more"}
-          </Button>
-        </div>
+      {openBatch ? (
+        <BatchPickerModal
+          batch={openBatch}
+          selected={selected}
+          onClose={() => setOpenBatch(null)}
+          onPick={(url) => {
+            onPick(url);
+            setOpenBatch(null);
+          }}
+        />
       ) : null}
+    </div>
+  );
+}
+
+function SingleTile({
+  job,
+  selected,
+  onPick,
+}: {
+  job: LibraryJob;
+  selected: string;
+  onPick: (url: string) => void;
+}) {
+  const url = pickImageUrl(job);
+  if (!url) return null;
+  const isSelected = selected === url;
+  return (
+    <button
+      type="button"
+      onClick={() => onPick(url)}
+      className={cn(
+        "group relative overflow-hidden rounded-lg border bg-black/30 text-left transition-colors",
+        isSelected
+          ? "border-amber-400/80 ring-2 ring-amber-400/40"
+          : "border-white/[0.08] hover:border-white/[0.2]"
+      )}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={url}
+        alt={job.product?.name ?? "Processed image"}
+        className="aspect-square w-full object-cover"
+        loading="lazy"
+      />
+      <div className="px-2 py-1.5">
+        <p className="truncate text-[11px] font-medium text-text-primary">
+          {job.product?.name ?? "Untitled"}
+        </p>
+        <p className="text-[10px] text-text-tertiary">
+          {formatDate(job.completedAt ?? job.createdAt)}
+        </p>
+      </div>
+    </button>
+  );
+}
+
+function BatchTile({
+  batch,
+  selected,
+  onOpen,
+}: {
+  batch: LibraryBatchItem;
+  selected: string;
+  onOpen: () => void;
+}) {
+  const cover = batchCoverUrl(batch);
+  if (!cover) return null;
+  // A batch tile "contains" the selected image if any of its styles matches
+  // the currently-picked URL. We surface that with a subtle ring so the
+  // seller can see which batch their pick came from.
+  const containsSelected = batch.styles.some(
+    (s) => s.imageUrl && s.imageUrl === selected
+  );
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={cn(
+        "group relative overflow-visible rounded-lg text-left transition-transform hover:-translate-y-0.5",
+        containsSelected && "drop-shadow-[0_6px_18px_rgba(251,191,36,0.25)]"
+      )}
+    >
+      {/* Stacked-card ghosts behind the cover — the same visual language as
+           Photo Studio's BatchCard. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-2 top-2 h-full w-full rounded-lg border border-white/[0.05] bg-black/40"
+      />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-1 top-1 h-full w-full rounded-lg border border-white/[0.07] bg-black/50"
+      />
+
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-lg border bg-black/30",
+          containsSelected
+            ? "border-amber-400/80 ring-2 ring-amber-400/40"
+            : "border-white/[0.08] group-hover:border-white/[0.2]"
+        )}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={cover}
+          alt={batch.product?.name ?? "Image set"}
+          className="aspect-square w-full object-cover"
+          loading="lazy"
+        />
+
+        {/* Count pill — top-right */}
+        <span className="absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur">
+          <Layers className="h-3 w-3" />
+          {batch.doneImages || batch.totalImages} images
+        </span>
+
+        <div className="px-2 py-1.5">
+          <p className="truncate text-[11px] font-medium text-text-primary">
+            {batch.product?.name ?? "Image set"}
+          </p>
+          <p className="text-[10px] text-text-tertiary">
+            {formatDate(batch.completedAt ?? batch.createdAt)} · Tap to choose a style
+          </p>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function BatchPickerModal({
+  batch,
+  selected,
+  onPick,
+  onClose,
+}: {
+  batch: LibraryBatchItem;
+  selected: string;
+  onPick: (url: string) => void;
+  onClose: () => void;
+}) {
+  // Only show styles whose generation succeeded — failed rows would be
+  // empty tiles with nothing to pick.
+  const pickable = batch.styles.filter(
+    (s): s is typeof s & { imageUrl: string } => Boolean(s.imageUrl)
+  );
+
+  // Close on Escape, matching the rest of our modals.
+  React.useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="relative flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/[0.1] bg-[#0E0E12] shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-white/[0.06] px-5 py-4">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-text-primary">
+              {batch.product?.name ?? "Image set"}
+            </p>
+            <p className="mt-0.5 text-[11px] text-text-tertiary">
+              {pickable.length} image{pickable.length === 1 ? "" : "s"} ·{" "}
+              {formatDate(batch.completedAt ?? batch.createdAt)} · Tap one to use it
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto p-5">
+          {pickable.length === 0 ? (
+            <p className="py-8 text-center text-sm text-text-tertiary">
+              No completed images in this set yet.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+              {pickable.map((s) => {
+                const isSelected = selected === s.imageUrl;
+                return (
+                  <button
+                    key={s.jobId}
+                    type="button"
+                    onClick={() => onPick(s.imageUrl)}
+                    className={cn(
+                      "group relative overflow-hidden rounded-lg border bg-black/30 text-left transition-colors",
+                      isSelected
+                        ? "border-amber-400/80 ring-2 ring-amber-400/40"
+                        : "border-white/[0.08] hover:border-white/[0.2]"
+                    )}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={s.imageUrl}
+                      alt={styleLabel(s.style)}
+                      className="aspect-square w-full object-cover"
+                      loading="lazy"
+                    />
+                    <div className="px-2 py-1.5">
+                      <p className="truncate text-[11px] font-medium text-text-primary">
+                        {styleLabel(s.style)}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -308,7 +517,7 @@ function CatalogTab({
       const res = await fetch(
         `/api/images/library?productId=${encodeURIComponent(id)}&take=1`
       );
-      const json = (await res.json()) as LibraryResponse & { error?: string };
+      const json = (await res.json()) as LegacyLibraryResponse & { error?: string };
       if (!res.ok) throw new Error(json.error ?? "Failed to look up images");
       const job = json.jobs[0];
       const url = job ? pickImageUrl(job) : null;

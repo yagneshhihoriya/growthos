@@ -18,24 +18,19 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { QUICK_STUDIO_PROMPTS } from "@/lib/quick-studio-prompts";
 import {
-  AMAZON_LISTING_PRESET,
   FULL_PRESET,
   IMAGE_STYLE_CONFIG,
-  INSTAGRAM_PRESET,
-  PRODUCT_CATEGORY_OPTIONS,
+  getAmazonPreset,
+  getInstagramPreset,
   type ImageStyle,
   type ProductCategory,
 } from "@/types/photo-studio";
+import { CategoryCombobox } from "@/components/photo-studio/category-combobox";
 import { useMultiImageStream } from "@/hooks/use-multi-image-stream";
+import { useProductAnalysis } from "@/hooks/use-product-analysis";
 import { downloadAllImages, downloadSingleImage } from "@/lib/download-images";
 
 export type StudioMode = "edit" | "create";
-
-const PRESETS: { label: string; styles: ImageStyle[] }[] = [
-  { label: "Amazon listing (5)", styles: AMAZON_LISTING_PRESET },
-  { label: "Instagram (3)", styles: INSTAGRAM_PRESET },
-  { label: "Full set (5)", styles: FULL_PRESET },
-];
 
 function arraysEqual(a: ImageStyle[], b: ImageStyle[]): boolean {
   if (a.length !== b.length) return false;
@@ -53,12 +48,62 @@ export function GeneratePanel({ onGenerationComplete }: { onGenerationComplete?:
 
   // Multi-image state (edit mode only).
   const [multipleMode, setMultipleMode] = React.useState(false);
-  const [productCategory, setProductCategory] = React.useState<ProductCategory>("clothing");
+  const [productCategory, setProductCategory] =
+    React.useState<ProductCategory>("clothing_kurti");
   const [selectedStyles, setSelectedStyles] = React.useState<ImageStyle[]>([]);
+  // Presets re-compute whenever the category changes so "Amazon listing" /
+  // "Instagram" include the most appropriate lifestyle style for the product.
+  const presets = React.useMemo(
+    () => [
+      { label: "Amazon listing (5)", styles: getAmazonPreset(productCategory) },
+      { label: "Instagram (3)", styles: getInstagramPreset(productCategory) },
+      { label: "Full set (5)", styles: FULL_PRESET },
+    ],
+    [productCategory]
+  );
   const multi = useMultiImageStream();
+  const analysisApi = useProductAnalysis();
   const resultsRef = React.useRef<HTMLDivElement | null>(null);
 
   const imageUrl = uploadedUrls[0] ?? null;
+
+  // Background Vision analysis.
+  // Fires as soon as an image is uploaded in edit mode — seller never waits
+  // for it, they're busy picking styles. On clear, we abort + reset.
+  // Analysis is applied only when the same imageUrl is still mounted, so a
+  // quick upload→clear→upload sequence doesn't apply a stale category.
+  const appliedForUrlRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (mode !== "edit") {
+      analysisApi.reset();
+      appliedForUrlRef.current = null;
+      return;
+    }
+    if (!imageUrl) {
+      analysisApi.reset();
+      appliedForUrlRef.current = null;
+      return;
+    }
+    void analysisApi.analyze(imageUrl);
+    // analysisApi identity is stable (refs under the hood), so it's safe to
+    // leave it out of the dep array — we only want to re-run when the URL
+    // or mode changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageUrl, mode]);
+
+  // Auto-select the detected category once per successful analysis, but only
+  // when confidence is high and the detection isn't the generic bucket.
+  React.useEffect(() => {
+    if (analysisApi.state.status !== "done") return;
+    if (!imageUrl) return;
+    if (appliedForUrlRef.current === imageUrl) return;
+
+    const { analysis } = analysisApi.state;
+    if (analysis.confidence > 0.8 && analysis.category !== "general") {
+      setProductCategory(analysis.category);
+    }
+    appliedForUrlRef.current = imageUrl;
+  }, [analysisApi.state, imageUrl]);
 
   function toggleStyle(style: ImageStyle) {
     setSelectedStyles((prev) => {
@@ -127,6 +172,7 @@ export function GeneratePanel({ onGenerationComplete }: { onGenerationComplete?:
       category: productCategory,
       styles: selectedStyles,
       customInstructions: prompt.trim() || undefined,
+      analysis: analysisApi.getAnalysis(),
     });
     onGenerationComplete?.();
     window.requestAnimationFrame(() => {
@@ -255,23 +301,51 @@ export function GeneratePanel({ onGenerationComplete }: { onGenerationComplete?:
             <div className="space-y-5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
               {/* Category */}
               <div>
-                <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
-                  Product category
-                  <span className="ml-1 font-normal normal-case tracking-normal text-text-tertiary/70">
-                    (helps the AI understand your product)
-                  </span>
-                </label>
-                <select
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
+                    Product category
+                    <span className="ml-1 font-normal normal-case tracking-normal text-text-tertiary/70">
+                      (helps the AI understand your product)
+                    </span>
+                  </label>
+                  {analysisApi.state.status === "analyzing" && (
+                    <span className="flex items-center gap-1.5 text-[10px] text-text-tertiary/70">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-purple-400" />
+                      Analysing image…
+                    </span>
+                  )}
+                  {analysisApi.state.status === "done" && (
+                    <span className="flex items-center gap-1.5 text-[10px] text-emerald-400/80">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      Product detected
+                    </span>
+                  )}
+                </div>
+                <CategoryCombobox
                   value={productCategory}
-                  onChange={(e) => setProductCategory(e.target.value as ProductCategory)}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-text-primary focus:border-purple-500/30 focus:outline-none focus:ring-1 focus:ring-purple-500/20"
-                >
-                  {PRODUCT_CATEGORY_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value} className="bg-neutral-900">
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(c) => {
+                    setProductCategory(c);
+                    // Lock in the seller's override so a late-arriving
+                    // analysis result for the same image doesn't stomp it.
+                    appliedForUrlRef.current = imageUrl;
+                  }}
+                />
+                {analysisApi.state.status === "done" && (
+                  <p className="mt-1.5 flex items-center gap-1 text-[11px] text-text-tertiary/70">
+                    <span aria-hidden>✦</span>
+                    AI detected:{" "}
+                    <span className="text-text-secondary">
+                      {analysisApi.state.analysis.productType}
+                    </span>
+                    {analysisApi.state.analysis.confidence > 0.8 &&
+                      analysisApi.state.analysis.category !== "general" && (
+                        <span className="text-text-tertiary/60">
+                          {" "}
+                          · Category auto-selected
+                        </span>
+                      )}
+                  </p>
+                )}
               </div>
 
               {/* Quick presets */}
@@ -280,7 +354,7 @@ export function GeneratePanel({ onGenerationComplete }: { onGenerationComplete?:
                   Quick presets
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {PRESETS.map((preset) => {
+                  {presets.map((preset) => {
                     const active = arraysEqual(selectedStyles, preset.styles);
                     return (
                       <button
@@ -584,6 +658,7 @@ export function GeneratePanel({ onGenerationComplete }: { onGenerationComplete?:
                               category: productCategory,
                               styles: [style],
                               customInstructions: prompt.trim() || undefined,
+                              analysis: analysisApi.getAnalysis(),
                             });
                           }}
                           className="mt-1 text-[11px] text-purple-300 underline underline-offset-2"

@@ -6,14 +6,9 @@ import { Download, Eye, Trash2 } from "lucide-react";
 import { BeforeAfterSlider } from "@/components/photo-studio/BeforeAfterSlider";
 import { DeleteGenerationConfirmDialog } from "@/components/photo-studio/DeleteGenerationConfirmDialog";
 import { toast } from "@/lib/toast";
+import type { LibraryJob } from "@/types/library";
 
-export type LibraryJob = {
-  id: string;
-  originalUrl: string;
-  processedUrls: Record<string, string> | null;
-  createdAt: string;
-  completedAt: string | null;
-};
+export type { LibraryJob };
 
 export function ImageCard({
   job,

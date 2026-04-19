@@ -15,24 +15,21 @@ import {
   loadImageBufferForEdit,
 } from "@/lib/s3-object-access";
 import { buildImageEditPrompt } from "@/lib/photo-prompts";
-import type { ImageStyle, ProductCategory } from "@/types/photo-studio";
+import {
+  PRODUCT_CATEGORY_VALUES,
+  type ImageStyle,
+  type ProductAnalysis,
+  type ProductCategory,
+} from "@/types/photo-studio";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const bodySchema = z.object({
   imageUrl: z.string().url(),
-  category: z.enum([
-    "clothing",
-    "jewellery",
-    "electronics",
-    "beauty",
-    "footwear",
-    "bags",
-    "home_decor",
-    "food",
-    "general",
-  ]),
+  category: z.enum(
+    PRODUCT_CATEGORY_VALUES as readonly [ProductCategory, ...ProductCategory[]]
+  ),
   styles: z
     .array(
       z.enum([
@@ -43,14 +40,39 @@ const bodySchema = z.object({
         "festive_diwali",
         "festive_wedding",
         "close_up",
+        "close_up_front",
         "infographic",
-        "minimal_gray",
       ])
     )
     .min(1)
     .max(5),
   customInstructions: z.string().max(500).optional(),
   productId: z.string().min(1).optional(),
+  // Vision analysis is fully optional — we shape-check only enough to
+  // guarantee a safe pass-through to buildImageEditPrompt. A missing or
+  // malformed analysis is treated as null and generation proceeds.
+  analysis: z
+    .object({
+      productType: z.string(),
+      category: z.enum(
+        PRODUCT_CATEGORY_VALUES as readonly [ProductCategory, ...ProductCategory[]]
+      ),
+      priceSegment: z.enum(["budget", "mid", "premium", "luxury"]),
+      primaryColor: z.string(),
+      keyFeatures: z.array(z.string()),
+      targetGender: z.enum(["men", "women", "unisex", "kids"]),
+      photographyNotes: z.object({
+        idealAngle: z.string(),
+        lightingStyle: z.string(),
+        backgroundRecommendation: z.string(),
+        commonMistakes: z.string(),
+        amazonTopSellersUse: z.string(),
+      }),
+      styleRecommendations: z.record(z.string()).optional().default({}),
+      doNotInclude: z.array(z.string()),
+      confidence: z.number().min(0).max(1),
+    })
+    .nullish(),
 });
 
 export async function POST(request: Request) {
@@ -69,6 +91,7 @@ export async function POST(request: Request) {
     );
   }
   const { imageUrl, category, styles, customInstructions, productId } = parsed.data;
+  const analysis = (parsed.data.analysis ?? null) as ProductAnalysis | null;
 
   // Resolve productId if it belongs to seller; silently drop otherwise.
   let resolvedProductId: string | null = null;
@@ -177,7 +200,8 @@ export async function POST(request: Request) {
           const prompt = buildImageEditPrompt(
             style as ImageStyle,
             category as ProductCategory,
-            customInstructions
+            customInstructions,
+            analysis
           );
 
           const jpeg = await nanoBananaEditImage(sourceBuffer, prompt);

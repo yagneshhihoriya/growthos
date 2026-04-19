@@ -18,9 +18,20 @@ type Props = {
   /** Called when the user confirms; close the dialog from the parent on success. */
   onConfirm: () => Promise<void>;
   loading?: boolean;
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
 };
 
-export function DeleteGenerationConfirmDialog({ open, onOpenChange, onConfirm, loading }: Props) {
+export function DeleteGenerationConfirmDialog({
+  open,
+  onOpenChange,
+  onConfirm,
+  loading,
+  title = "Delete this generation?",
+  description = "Permanently removes it from your library and storage.",
+  confirmLabel = "Delete permanently",
+}: Props) {
   const cancelRef = React.useRef<HTMLButtonElement>(null);
 
   React.useEffect(() => {
@@ -48,10 +59,10 @@ export function DeleteGenerationConfirmDialog({ open, onOpenChange, onConfirm, l
             </div>
             <DialogHeader className="m-0 flex-1 space-y-1.5 text-left">
               <DialogTitle className="text-base font-semibold leading-snug text-text-primary">
-                Delete this generation?
+                {title}
               </DialogTitle>
               <DialogDescription className="text-left text-[13px] leading-snug text-text-secondary">
-                Permanently removes it from your library and storage.
+                {description}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -78,7 +89,7 @@ export function DeleteGenerationConfirmDialog({ open, onOpenChange, onConfirm, l
             iconLeft={!loading ? <Trash2 className="h-4 w-4" aria-hidden /> : undefined}
             onClick={() => void onConfirm()}
           >
-            Delete permanently
+            {confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

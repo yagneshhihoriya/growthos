@@ -5,8 +5,14 @@ import { GoogleGenAI } from "@google/genai";
 import { getS3Bucket, getS3Client } from "@/lib/s3";
 import { publicUrlForS3Key } from "@/lib/public-url";
 
-/** Default: stable Nano Banana (Gemini 2.5 Flash Image). Override with GEMINI_IMAGE_MODEL if needed. */
-const DEFAULT_IMAGE_MODEL = "gemini-2.5-flash-image";
+/**
+ * Default image-generation model. Gemini 3.1 Flash Image Preview ("Nano
+ * Banana 2", released Feb 26 2026) — fast (≈4–6s per image), higher quality
+ * than the 2.5 Flash Image line, still in preview so access is gated per
+ * API key. Override with GEMINI_IMAGE_MODEL if your key is not on the
+ * preview allow-list.
+ */
+const DEFAULT_IMAGE_MODEL = "gemini-3.1-flash-image-preview";
 
 function imageModelId(): string {
   return process.env.GEMINI_IMAGE_MODEL?.trim() || DEFAULT_IMAGE_MODEL;
@@ -62,6 +68,28 @@ function isRetryableGeminiError(err: unknown): boolean {
   return false;
 }
 
+/**
+ * True when Gemini rejected the request because the API key can't reach the
+ * requested model — typically a preview allow-list gap (gemini-3.1-flash-image-preview
+ * is gated), a typo in GEMINI_IMAGE_MODEL, or a region/project mismatch.
+ * These MUST fail fast rather than burning the 4-attempt retry budget.
+ */
+function isModelAccessError(err: unknown): boolean {
+  const msg = formatGeminiApiError(err).toLowerCase();
+  return (
+    msg.includes("not found") ||
+    msg.includes("permission denied") ||
+    msg.includes("permission_denied") ||
+    msg.includes("not_found") ||
+    msg.includes("is not supported") ||
+    msg.includes("does not have access") ||
+    msg.includes(" 404") ||
+    msg.startsWith("404") ||
+    msg.includes(" 403") ||
+    msg.startsWith("403")
+  );
+}
+
 /** Downscale for Gemini inline image limits (~7MB per file in practice). */
 async function prepareImageBufferForGeminiInline(imageBuffer: Buffer): Promise<Buffer> {
   const meta = await sharp(imageBuffer).metadata();
@@ -107,6 +135,7 @@ async function generateContentWithRetries(
   params: any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
+  const modelId: string = typeof params?.model === "string" ? params.model : "(unknown)";
   const maxAttempts = 4;
   let lastErr: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -114,6 +143,20 @@ async function generateContentWithRetries(
       return await ai.models.generateContent(params);
     } catch (err) {
       lastErr = err;
+      // Access-denied / model-not-found should fail fast with a readable
+      // error: no point retrying something the key will never be allowed
+      // to call.
+      if (isModelAccessError(err)) {
+        const detail = formatGeminiApiError(err);
+        const friendly =
+          `Gemini rejected model "${modelId}" — your API key does not have access ` +
+          `to this model (common for preview models like gemini-3.1-flash-image-preview). ` +
+          `Fix: (1) confirm the key is on Google's allow-list for this model, or ` +
+          `(2) set GEMINI_IMAGE_MODEL to a model your key supports (e.g. gemini-2.5-flash-image). ` +
+          `Upstream detail: ${detail}`;
+        console.error(`[gemini-model-access] ${friendly}`);
+        throw new Error(friendly);
+      }
       if (attempt < maxAttempts && isRetryableGeminiError(err)) {
         await sleep(800 * attempt * attempt);
         continue;
@@ -166,6 +209,55 @@ export async function nanoBananaEditImage(imageBuffer: Buffer, userPrompt: strin
 
   const raw = extractImageBufferFromGeminiResponse(response);
   return await sharp(raw).jpeg({ quality: 92 }).toBuffer();
+}
+
+/**
+ * Vision analysis: product image → structured JSON metadata.
+ *
+ * Uses gemini-2.5-flash (matches caption/title/autopilot pipelines) with
+ * responseMimeType=application/json so the model is forced to emit valid
+ * JSON. Caller is expected to JSON.parse the returned string and handle
+ * malformed responses gracefully.
+ */
+const VISION_MODEL = "gemini-2.5-flash";
+
+export async function nanoBananaAnalyzeProduct(
+  imageBuffer: Buffer,
+  analysisPrompt: string
+): Promise<string> {
+  const apiKey = requireGeminiKey();
+  const ai = new GoogleGenAI({ apiKey });
+  const png = await prepareImageBufferForGeminiInline(imageBuffer);
+  const base64Image = png.toString("base64");
+
+  const response = await generateContentWithRetries(ai, {
+    model: VISION_MODEL,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            inlineData: {
+              mimeType: "image/png",
+              data: base64Image,
+            },
+          },
+          { text: analysisPrompt },
+        ],
+      },
+    ],
+    config: {
+      responseMimeType: "application/json",
+      maxOutputTokens: 2048,
+      temperature: 0.2,
+    },
+  });
+
+  const text = typeof response.text === "string" ? response.text : "";
+  if (!text.trim()) {
+    throw new Error("Gemini vision returned empty response");
+  }
+  return text;
 }
 
 /**

@@ -2,7 +2,11 @@
 
 import * as React from "react";
 import { toast } from "@/lib/toast";
-import type { ImageStyle, ProductCategory } from "@/types/photo-studio";
+import type {
+  ImageStyle,
+  ProductAnalysis,
+  ProductCategory,
+} from "@/types/photo-studio";
 
 export type StyleStatus = "pending" | "generating" | "done" | "error";
 
@@ -18,6 +22,8 @@ export interface GenerateMultiParams {
   styles: ImageStyle[];
   customInstructions?: string;
   productId?: string;
+  /** Background Vision analysis result. Optional — null is fine. */
+  analysis?: ProductAnalysis | null;
 }
 
 interface ServerEvent {
