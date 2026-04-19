@@ -20,12 +20,17 @@ export async function toPublicPostableUrl(storedUrl: string, sellerId: string): 
     if (hasCf) {
       return publicUrlForS3Key(key);
     }
-    // Dev / private bucket: time-limited URL Meta can fetch (no Content-Disposition attachment).
-    if (process.env.NODE_ENV !== "production") {
-      console.warn(
-        "[post-image-url] AWS_CLOUDFRONT_URL unset — using 24h presigned URL for Meta fetch (set CloudFront for production)."
+    // Production: require a public CDN. A 24h presigned URL is not a stable public asset
+    // and rotating signatures break reposts / IG's async fetch. Fail loudly instead of
+    // silently handing Meta a short-lived URL.
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "AWS_CLOUDFRONT_URL is required in production to post images to Meta. Configure CloudFront in front of the S3 bucket."
       );
     }
+    console.warn(
+      "[post-image-url] AWS_CLOUDFRONT_URL unset — using 24h presigned URL for Meta fetch (dev only)."
+    );
     return getPresignedDownloadUrl({ key, expiresInSeconds: 86400 });
   }
 

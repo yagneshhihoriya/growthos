@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSession } from "next-auth/react";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import { GrowthLogoWordmark } from "@/components/branding/GrowthLogo";
 
 type NavItem = {
@@ -165,7 +165,6 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { data } = useSession();
-  const toast = useToast();
 
   const widthClass = collapsed ? "w-[64px]" : "w-[240px]";
 

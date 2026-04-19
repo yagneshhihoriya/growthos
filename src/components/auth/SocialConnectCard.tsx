@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 
 type Platform = "instagram" | "facebook";
 
@@ -23,7 +23,6 @@ export function SocialConnectCard({
   connection: Connection | null;
   onRefresh: () => void;
 }) {
-  const toast = useToast();
   const [loading, setLoading] = React.useState(false);
 
   const isConnected = connection?.isActive ?? false;
@@ -39,12 +38,14 @@ export function SocialConnectCard({
       );
       const json = (await res.json()) as { authUrl?: string; error?: string };
       if (!res.ok || !json.authUrl) {
-        toast.error("Connection failed", json.error ?? "Could not start OAuth flow");
+        toast.error("Connection failed", {
+          description: json.error ?? "Could not start OAuth flow",
+        });
         return;
       }
       window.location.href = json.authUrl;
     } catch {
-      toast.error("Connection failed", "Please try again");
+      toast.error("Connection failed", { description: "Please try again" });
     } finally {
       setLoading(false);
     }
@@ -58,7 +59,7 @@ export function SocialConnectCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ platform }),
       });
-      toast.success("Disconnected", `${label} account has been disconnected.`);
+      toast.success("Disconnected", { description: `${label} account has been disconnected.` });
       onRefresh();
     } catch {
       toast.error("Failed to disconnect");

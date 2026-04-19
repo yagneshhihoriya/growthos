@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Check, Lock, Mail, MapPin, Store, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AuthField, AuthSelect } from "@/components/auth/AuthField";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const cities = ["Surat", "Mumbai", "Ahmedabad", "Jaipur", "Delhi", "Other"] as const;
@@ -30,7 +30,6 @@ function strengthLabel(s: number): string {
 
 export function RegisterForm() {
   const router = useRouter();
-  const toast = useToast();
   const [name, setName] = React.useState("");
   const [shopName, setShopName] = React.useState("");
   const [city, setCity] = React.useState<string>("Surat");
@@ -45,7 +44,7 @@ export function RegisterForm() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!terms) {
-      toast.warning("Terms required", "Please accept the Terms of Service.");
+      toast.warning("Terms required", { description: "Please accept the Terms of Service." });
       return;
     }
     if (password !== confirm) {
@@ -64,14 +63,14 @@ export function RegisterForm() {
       if (!res.ok) {
         const msg =
           typeof data === "object" && data && "error" in data ? String((data as { error: string }).error) : "Registration failed";
-        toast.error("Could not create account", msg);
+        toast.error("Could not create account", { description: msg });
         return;
       }
-      toast.success("Account created", "You can sign in now.");
+      toast.success("Account created", { description: "You can sign in now." });
       router.push("/login");
       router.refresh();
     } catch {
-      toast.error("Registration failed", "Please try again.");
+      toast.error("Registration failed", { description: "Please try again." });
     } finally {
       setLoading(false);
     }

@@ -5,7 +5,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Download, Eye, Trash2 } from "lucide-react";
 import { BeforeAfterSlider } from "@/components/photo-studio/BeforeAfterSlider";
 import { DeleteGenerationConfirmDialog } from "@/components/photo-studio/DeleteGenerationConfirmDialog";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 
 export type LibraryJob = {
   id: string;
@@ -22,7 +22,6 @@ export function ImageCard({
   job: LibraryJob;
   onDeleted?: (id: string) => void;
 }) {
-  const toast = useToast();
   const [mode, setMode] = React.useState<"thumb" | "compare">("thumb");
   const [deleting, setDeleting] = React.useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
@@ -50,7 +49,7 @@ export function ImageCard({
     setDeleting(true);
     try {
       await runPermanentDelete();
-      toast.success("Deleted", "Removed from your library and storage.");
+      toast.success("Deleted", { description: "Removed from your library and storage." });
       setDeleteDialogOpen(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Delete failed";
@@ -58,7 +57,7 @@ export function ImageCard({
     } finally {
       setDeleting(false);
     }
-  }, [runPermanentDelete, toast]);
+  }, [runPermanentDelete]);
 
   return (
     <>

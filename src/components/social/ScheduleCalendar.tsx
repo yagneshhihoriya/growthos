@@ -6,7 +6,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventClickArg, EventDropArg, DatesSetArg } from "@fullcalendar/core";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import { PostEditDrawer, type EditablePost } from "./PostEditDrawer";
 
 type ScheduledPost = EditablePost & {
@@ -37,7 +37,6 @@ function useIsNarrow(breakpoint = 640) {
 }
 
 export function ScheduleCalendar() {
-  const toast = useToast();
   const [posts, setPosts] = React.useState<ScheduledPost[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [selected, setSelected] = React.useState<ScheduledPost | null>(null);
@@ -65,7 +64,7 @@ export function ScheduleCalendar() {
         setLoading(false);
       }
     },
-    [toast]
+    []
   );
 
   const events = React.useMemo(

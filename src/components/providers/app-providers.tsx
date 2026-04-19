@@ -4,7 +4,6 @@ import * as React from "react";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ToastProvider } from "@/components/ui/toast";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -17,9 +16,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       disableTransitionOnChange={false}
     >
       <SessionProvider>
-        <TooltipProvider delayDuration={200}>
-          <ToastProvider>{children}</ToastProvider>
-        </TooltipProvider>
+        <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
       </SessionProvider>
     </ThemeProvider>
   );

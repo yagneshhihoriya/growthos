@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { MetaButton } from "@/components/auth/MetaButton";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const cities = ["Surat", "Mumbai", "Ahmedabad", "Jaipur", "Delhi", "Other"] as const;
@@ -262,7 +262,6 @@ export function UnifiedAuthPage({
   metaEnabled: boolean;
 }) {
   const router = useRouter();
-  const toast = useToast();
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -289,13 +288,13 @@ export function UnifiedAuthPage({
         redirect: false,
       });
       if (res?.error) {
-        toast.error("Sign in failed", "Check your email and password.");
+        toast.error("Sign in failed", { description: "Check your email and password." });
         return;
       }
       router.push("/dashboard");
       router.refresh();
     } catch {
-      toast.error("Sign in failed", "Please try again.");
+      toast.error("Sign in failed", { description: "Please try again." });
     } finally {
       setLoginLoading(false);
     }
@@ -304,7 +303,7 @@ export function UnifiedAuthPage({
   async function onRegister(e: React.FormEvent) {
     e.preventDefault();
     if (!terms) {
-      toast.warning("Terms required", "Please accept the Terms of Service.");
+      toast.warning("Terms required", { description: "Please accept the Terms of Service." });
       return;
     }
     if (regPassword !== confirm) {
@@ -331,14 +330,14 @@ export function UnifiedAuthPage({
           typeof data === "object" && data && "error" in data
             ? String((data as { error: string }).error)
             : "Registration failed";
-        toast.error("Could not create account", msg);
+        toast.error("Could not create account", { description: msg });
         return;
       }
-      toast.success("Account created", "You can sign in now.");
+      toast.success("Account created", { description: "You can sign in now." });
       router.push("/login");
       router.refresh();
     } catch {
-      toast.error("Registration failed", "Please try again.");
+      toast.error("Registration failed", { description: "Please try again." });
     } finally {
       setRegisterLoading(false);
     }

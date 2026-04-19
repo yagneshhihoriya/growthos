@@ -4,7 +4,7 @@ import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import { useImageUpload } from "@/hooks/useImageUpload";
 
 export type AutopilotPost = {
@@ -31,7 +31,6 @@ type Props = {
 };
 
 export function AutopilotPostEditSheet({ post, onClose, onSaved }: Props) {
-  const toast = useToast();
   const [caption, setCaption] = React.useState("");
   const [hashtags, setHashtags] = React.useState("");
   const [imageUrl, setImageUrl] = React.useState("");

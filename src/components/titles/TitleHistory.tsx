@@ -4,7 +4,7 @@ import * as React from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ChevronDown, ChevronUp, Copy, FlaskConical, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import type { PlatformKey } from "@/lib/title-pipeline";
 
 type OptimizationRow = {
@@ -27,7 +27,6 @@ export function TitleHistory({
   /** Parent should bump `key` on this component after a new optimization so the list refetches. */
   onStartAbTest?: (row: OptimizationRow) => void;
 }) {
-  const toast = useToast();
   const [rows, setRows] = React.useState<OptimizationRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [page, setPage] = React.useState(1);
@@ -49,7 +48,7 @@ export function TitleHistory({
     } finally {
       setLoading(false);
     }
-  }, [toast, page]);
+  }, [page]);
 
   React.useEffect(() => {
     void load();
@@ -73,7 +72,7 @@ export function TitleHistory({
     if (!titles) return;
     try {
       await navigator.clipboard.writeText(JSON.stringify(titles, null, 2));
-      toast.success("Copied", "All platform titles copied as JSON.");
+      toast.success("Copied", { description: "All platform titles copied as JSON." });
     } catch {
       toast.error("Copy failed");
     }
@@ -82,7 +81,7 @@ export function TitleHistory({
   async function restoreVersion(v: OptimizationRow) {
     const t = v.optimizedTitles;
     if (!t) {
-      toast.warning("Nothing to copy", "This version has no titles.");
+      toast.warning("Nothing to copy", { description: "This version has no titles." });
       return;
     }
     const lines = PLATFORM_ORDER.map((p) => {
@@ -91,12 +90,14 @@ export function TitleHistory({
     }).filter(Boolean);
     const text = lines.join("\n\n");
     if (!text) {
-      toast.warning("Nothing to copy", "No platform titles on this version.");
+      toast.warning("Nothing to copy", { description: "No platform titles on this version." });
       return;
     }
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Restored to clipboard", "Paste into your listing tools or notes.");
+      toast.success("Restored to clipboard", {
+        description: "Paste into your listing tools or notes.",
+      });
     } catch {
       toast.error("Copy failed");
     }
@@ -109,7 +110,8 @@ export function TitleHistory({
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-8 text-center">
-        <p className="text-sm text-text-tertiary">No optimizations yet. Run one from the Single product tab.</p>
+        <p className="text-sm text-text-tertiary">No optimizations yet</p>
+        <p className="mt-1 text-xs text-text-tertiary/80">Run one from the Single product tab.</p>
       </div>
     );
   }
@@ -250,7 +252,11 @@ export function TitleHistory({
                             key={p}
                             type="button"
                             className="min-h-[44px] rounded border border-white/[0.08] px-2 py-1.5 text-[10px] text-purple-300 hover:bg-purple-500/10 sm:min-h-0"
-                            onClick={() => void navigator.clipboard.writeText(t).then(() => toast.success("Copied", p))}
+                            onClick={() =>
+              void navigator.clipboard
+                .writeText(t)
+                .then(() => toast.success("Copied", { description: p }))
+            }
                           >
                             {p}
                           </button>

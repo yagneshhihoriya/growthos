@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 type Product = {
@@ -31,7 +31,6 @@ export function AutopilotStep2Products({
   onBack,
   onNext,
 }: Props) {
-  const toast = useToast();
   const [products, setProducts] = React.useState<Product[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -50,7 +49,7 @@ export function AutopilotStep2Products({
     return () => {
       alive = false;
     };
-  }, [toast]);
+  }, []);
 
   function toggle(id: string) {
     if (selectedIds.includes(id)) {

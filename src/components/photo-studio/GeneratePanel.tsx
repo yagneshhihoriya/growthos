@@ -4,14 +4,13 @@ import * as React from "react";
 import { Sparkles, Wand2, Download, RefreshCw, ImageIcon } from "lucide-react";
 import { UploadZone } from "@/components/photo-studio/UploadZone";
 import { BeforeAfterSlider } from "@/components/photo-studio/BeforeAfterSlider";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { QUICK_STUDIO_PROMPTS } from "@/lib/quick-studio-prompts";
 
 export type StudioMode = "edit" | "create";
 
 export function GeneratePanel({ onGenerationComplete }: { onGenerationComplete?: () => void }) {
-  const toast = useToast();
   const [mode, setMode] = React.useState<StudioMode>("edit");
   const [uploadedUrls, setUploadedUrls] = React.useState<string[]>([]);
   const [prompt, setPrompt] = React.useState("");
@@ -24,11 +23,11 @@ export function GeneratePanel({ onGenerationComplete }: { onGenerationComplete?:
   async function generate() {
     const trimmed = prompt.trim();
     if (!trimmed) {
-      toast.warning("Add a prompt", "Describe how you want the image to look.");
+      toast.warning("Add a prompt", { description: "Describe how you want the image to look." });
       return;
     }
     if (mode === "edit" && !imageUrl) {
-      toast.warning("Upload an image", "Edit mode needs a photo to transform.");
+      toast.warning("Upload an image", { description: "Edit mode needs a photo to transform." });
       return;
     }
 
@@ -47,7 +46,7 @@ export function GeneratePanel({ onGenerationComplete }: { onGenerationComplete?:
       const json: unknown = await res.json();
       if (!res.ok) {
         const msg = typeof json === "object" && json && "error" in json ? String((json as { error: string }).error) : "Generation failed";
-        toast.error("Generation failed", msg);
+        toast.error("Generation failed", { description: msg });
         return;
       }
       const { generatedUrl, originalUrl: apiOriginalUrl } = json as {
@@ -60,9 +59,9 @@ export function GeneratePanel({ onGenerationComplete }: { onGenerationComplete?:
       const originalForCompare = mode === "edit" ? (apiOriginalUrl ?? imageUrl!) : "";
       setResult({ generatedUrl, originalUrl: originalForCompare });
       onGenerationComplete?.();
-      toast.success("Ready", "Your image is ready to download.");
+      toast.success("Ready", { description: "Your image is ready to download." });
     } catch {
-      toast.error("Generation failed", "Please try again.");
+      toast.error("Generation failed", { description: "Please try again." });
     } finally {
       setGenerating(false);
     }

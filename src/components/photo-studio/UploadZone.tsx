@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ImagePlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -37,7 +37,6 @@ export function UploadZone({
   /** Extra line under file type hint, e.g. "one image for AI edit". */
   helperSuffix?: string;
 }) {
-  const toast = useToast();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [dragActive, setDragActive] = React.useState(false);
   const [entries, setEntries] = React.useState<FileEntry[]>([]);
@@ -85,7 +84,7 @@ export function UploadZone({
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
       updateEntry(entry.id, { status: "error", error: msg });
-      toast.error("Upload failed", msg);
+      toast.error("Upload failed", { description: msg });
       return null;
     }
   }
@@ -103,18 +102,22 @@ export function UploadZone({
     }
 
     if (!singleFile && entries.length + list.length > effectiveMax) {
-      toast.error("Too many files", `You can upload up to ${effectiveMax} image(s) at once.`);
+      toast.error("Too many files", {
+        description: `You can upload up to ${effectiveMax} image(s) at once.`,
+      });
       return;
     }
 
     const newEntries: { entry: FileEntry; file: File }[] = [];
     for (const file of list) {
       if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-        toast.error("Unsupported file", `${file.name} is not a JPG, PNG, or WEBP.`);
+        toast.error("Unsupported file", {
+          description: `${file.name} is not a JPG, PNG, or WEBP.`,
+        });
         continue;
       }
       if (file.size > MAX_BYTES) {
-        toast.error("File too large", `${file.name} exceeds 25MB.`);
+        toast.error("File too large", { description: `${file.name} exceeds 25MB.` });
         continue;
       }
       const entry: FileEntry = {
@@ -144,9 +147,11 @@ export function UploadZone({
     const ok = urlsOk.length;
     const fail = newEntries.length - ok;
     if (ok > 0 && fail === 0) {
-      toast.success("Upload complete", ok === 1 ? "1 image ready." : `${ok} images ready.`);
+      toast.success("Upload complete", {
+        description: ok === 1 ? "1 image ready." : `${ok} images ready.`,
+      });
     } else if (ok > 0 && fail > 0) {
-      toast.warning("Partial upload", `${ok} succeeded, ${fail} failed.`);
+      toast.warning("Partial upload", { description: `${ok} succeeded, ${fail} failed.` });
     }
   }
 

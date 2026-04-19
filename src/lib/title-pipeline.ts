@@ -706,3 +706,36 @@ Score 0-100 for overall listing quality.`;
 
   return { titles, description, bullets, keywords, score };
 }
+
+/** Plain-text completion (no JSON schema) — used by multi-platform title form. */
+export async function callGeminiPlainText(system: string, user: string): Promise<string> {
+  const ai = new GoogleGenAI({ apiKey: requireGeminiKey() });
+  const attempts: Array<{ model: string; delayMs: number }> = [
+    { model: TITLE_MODEL, delayMs: 0 },
+    { model: TITLE_MODEL, delayMs: 800 },
+    { model: TITLE_MODEL, delayMs: 2000 },
+    { model: TITLE_FALLBACK_MODEL, delayMs: 500 },
+  ];
+  let lastErr: unknown = null;
+  for (const { model, delayMs } of attempts) {
+    if (delayMs) await sleep(delayMs);
+    try {
+      const res = await ai.models.generateContent({
+        model,
+        contents: [{ role: "user", parts: [{ text: user }] }],
+        config: {
+          systemInstruction: system,
+          maxOutputTokens: 8192,
+        },
+      });
+      const text = typeof res.text === "string" ? res.text : "";
+      if (!text) throw new Error("Gemini returned empty response");
+      return text;
+    } catch (err) {
+      lastErr = err;
+      if (!isTransient(err)) throw err;
+      console.warn(`[title-pipeline] transient error on ${model} (plain text), retrying`, err);
+    }
+  }
+  throw lastErr ?? new Error("Gemini plain-text call failed after retries");
+}

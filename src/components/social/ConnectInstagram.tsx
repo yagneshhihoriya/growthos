@@ -3,7 +3,7 @@
 import * as React from "react";
 import { CheckCircle2, Facebook, Instagram, Loader2, Plug, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 
 type Connection = {
   platform: string;
@@ -14,7 +14,6 @@ type Connection = {
 };
 
 export function ConnectInstagram() {
-  const toast = useToast();
   const [loading, setLoading] = React.useState(true);
   const [connecting, setConnecting] = React.useState<"instagram" | "facebook" | null>(null);
   const [connections, setConnections] = React.useState<Connection[]>([]);
@@ -30,7 +29,7 @@ export function ConnectInstagram() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   React.useEffect(() => {
     void load();

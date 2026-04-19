@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { PLATFORM_CHAR_LIMITS, type PlatformKey } from "@/lib/title-pipeline";
 
@@ -27,7 +27,6 @@ export function TitleResultCard({
   appliedPlatforms: string[];
   onAppliedPlatformsChange: (platforms: string[]) => void;
 }) {
-  const toast = useToast();
   const [copied, setCopied] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const limit = PLATFORM_CHAR_LIMITS[platform];
@@ -38,7 +37,7 @@ export function TitleResultCard({
     try {
       await navigator.clipboard.writeText(title);
       setCopied(true);
-      toast.success("Copied", `${LABELS[platform]} title copied.`);
+      toast.success("Copied", { description: `${LABELS[platform]} title copied.` });
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Copy failed");
@@ -57,7 +56,7 @@ export function TitleResultCard({
       const json = (await res.json()) as { error?: string; optimization?: { appliedPlatforms: string[]; isApplied: boolean } };
       if (!res.ok) throw new Error(json.error ?? "Apply failed");
       onAppliedPlatformsChange(json.optimization?.appliedPlatforms ?? next);
-      toast.success("Saved", `Marked ${LABELS[platform]} as applied.`);
+      toast.success("Saved", { description: `Marked ${LABELS[platform]} as applied.` });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Apply failed");
     } finally {

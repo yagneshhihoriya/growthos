@@ -38,6 +38,7 @@ model Seller {
   titleOptimizations   TitleOptimization[]
   abTests              AbTest[]
   bulkTitleJobs        BulkTitleJob[]
+  captionTemplates     CaptionTemplate[]
 
   @@index([email])
   @@index([googleId])
@@ -352,6 +353,18 @@ model WatermarkPreset {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   seller      Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+}
+
+model CaptionTemplate {
+  id        String   @id @default(cuid())
+  sellerId  String
+  name      String   @default("My default")
+  settings  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  seller    Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 
   @@index([sellerId])
 }

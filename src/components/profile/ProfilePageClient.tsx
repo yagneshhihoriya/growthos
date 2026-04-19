@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useSession } from "next-auth/react";
 import { ChevronDown, Lock, Mail, MapPin, Pencil, Store, User, Bell } from "lucide-react";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const cities = ["Surat", "Mumbai", "Ahmedabad", "Jaipur", "Delhi", "Other"] as const;
@@ -71,7 +71,6 @@ const NAV: { id: Section; label: string }[] = [
 ];
 
 export function ProfilePageClient({ initial }: { initial: ProfileInitial }) {
-  const toast = useToast();
   const { update } = useSession();
   const citiesForSelect = React.useMemo(() => cityOptions(initial.city), [initial.city]);
 
@@ -145,11 +144,13 @@ export function ProfilePageClient({ initial }: { initial: ProfileInitial }) {
     setSaving(true);
     try {
       await persistProfile();
-      toast.success("Profile saved", "Your details are up to date.");
+      toast.success("Profile saved", { description: "Your details are up to date." });
       resetPasswordFields();
       await update();
     } catch (err) {
-      toast.error("Could not save", err instanceof Error ? err.message : "Please try again.");
+      toast.error("Could not save", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
     } finally {
       setSaving(false);
     }
@@ -160,11 +161,11 @@ export function ProfilePageClient({ initial }: { initial: ProfileInitial }) {
     e.target.value = "";
     if (!file) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      toast.error("Invalid file", "Use JPG, PNG, or WebP.");
+      toast.error("Invalid file", { description: "Use JPG, PNG, or WebP." });
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("File too large", "Max size is 10 MB.");
+      toast.error("File too large", { description: "Max size is 10 MB." });
       return;
     }
 
@@ -193,10 +194,12 @@ export function ProfilePageClient({ initial }: { initial: ProfileInitial }) {
 
       setAvatarUrl(publicUrl);
       await persistProfile({ avatarUrl: publicUrl });
-      toast.success("Photo updated", "Your profile picture is saved.");
+      toast.success("Photo updated", { description: "Your profile picture is saved." });
       await update();
     } catch (err) {
-      toast.error("Upload failed", err instanceof Error ? err.message : "Try again.");
+      toast.error("Upload failed", {
+        description: err instanceof Error ? err.message : "Try again.",
+      });
     } finally {
       setAvatarUploading(false);
     }

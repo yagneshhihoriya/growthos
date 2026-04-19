@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Send, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 
 export type EditablePost = {
   id: string;
@@ -34,7 +34,6 @@ function toDatetimeLocal(iso: string | null): string {
 }
 
 export function PostEditDrawer({ post, onClose, onSaved, onDeleted }: Props) {
-  const toast = useToast();
   const [caption, setCaption] = React.useState("");
   const [when, setWhen] = React.useState("");
   const [saving, setSaving] = React.useState(false);

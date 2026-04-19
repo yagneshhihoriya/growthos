@@ -4,7 +4,7 @@ import * as React from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { Festival } from "@/lib/indian-festivals";
 import { AutopilotPostEditSheet, type AutopilotPost } from "./PostEditSheet";
@@ -28,7 +28,6 @@ function tomorrowIsoDate(): string {
 }
 
 export function AutopilotStep4Review({ calendarResult, month, year, onBack, onApproved }: Props) {
-  const toast = useToast();
   const [posts, setPosts] = React.useState<AutopilotPost[]>(calendarResult.posts);
   const [selected, setSelected] = React.useState<AutopilotPost | null>(null);
   const [approving, setApproving] = React.useState(false);
@@ -53,7 +52,9 @@ export function AutopilotStep4Review({ calendarResult, month, year, onBack, onAp
       };
       if (!res.ok) throw new Error(json.error ?? "Approve failed");
       const count = json.approved ?? json.scheduled ?? posts.length;
-      toast.success(`${count} posts scheduled`, "View them in the Scheduled tab");
+      toast.success(`${count} posts scheduled`, {
+        description: "View them in the Scheduled tab",
+      });
       onApproved(count);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Approve failed");

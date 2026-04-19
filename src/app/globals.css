@@ -72,6 +72,9 @@
   --oauth-meta-bg: #1877f2;
   --oauth-meta-hover: #166fe5;
 
+  /* Keyboard focus ring for custom pill / platform controls (no Tailwind ring on buttons). */
+  --focus-control-ring: rgba(168, 85, 247, 0.78);
+
   --sidebar-width: 240px;
   --sidebar-collapsed: 64px;
   --topbar-height: 56px;
@@ -252,3 +255,145 @@ pre,
 .fc .fc-list-event:hover td { background: rgba(255,255,255,0.04); }
 .fc .fc-list-event-title, .fc .fc-list-event-time { color: var(--text-primary); font-size: 0.8rem; }
 .fc .fc-list-empty { color: var(--text-tertiary); font-size: 0.8rem; }
+
+/* ── Toast system (Sonner) ─────────────────────────────────── */
+
+[data-sonner-toaster] {
+  --width: 380px;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+[data-sonner-toast] {
+  border-radius: 12px !important;
+  border: 0.5px solid var(--border-default) !important;
+  background: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-md) !important;
+  padding: 14px 16px !important;
+  gap: 12px !important;
+  overflow: hidden;
+  position: relative;
+}
+
+[data-sonner-toast]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 12px 0 0 12px;
+}
+
+[data-sonner-toast][data-type="success"]::before {
+  background: #1d9e75;
+}
+[data-sonner-toast][data-type="error"]::before {
+  background: #e24b4a;
+}
+[data-sonner-toast][data-type="warning"]::before {
+  background: #ba7517;
+}
+[data-sonner-toast][data-type="info"]::before {
+  background: #378add;
+}
+
+[data-sonner-toast]::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  transform-origin: left;
+  animation: sonner-toast-progress linear forwards;
+  animation-duration: var(--duration, 4000ms);
+}
+
+[data-sonner-toast][data-type="success"]::after {
+  background: #1d9e75;
+}
+[data-sonner-toast][data-type="error"]::after {
+  background: #e24b4a;
+}
+[data-sonner-toast][data-type="warning"]::after {
+  background: #ba7517;
+}
+[data-sonner-toast][data-type="info"]::after {
+  background: #378add;
+}
+
+@keyframes sonner-toast-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+[data-sonner-toast] [data-title] {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+  margin-bottom: 2px !important;
+}
+
+[data-sonner-toast] [data-description] {
+  font-size: 12px !important;
+  color: var(--text-secondary) !important;
+  line-height: 1.5 !important;
+}
+
+[data-sonner-toast] [data-button] {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  text-decoration: underline !important;
+  text-underline-offset: 2px !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+  margin-top: 6px !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-button] {
+  color: #0f6e56 !important;
+}
+[data-sonner-toast][data-type="error"] [data-button] {
+  color: #a32d2d !important;
+}
+[data-sonner-toast][data-type="warning"] [data-button] {
+  color: #854f0b !important;
+}
+[data-sonner-toast][data-type="info"] [data-button] {
+  color: #185fa5 !important;
+}
+
+[data-sonner-toast] [data-close-button] {
+  background: transparent !important;
+  border: none !important;
+  opacity: 0.4 !important;
+  transition: opacity 0.15s !important;
+}
+[data-sonner-toast] [data-close-button]:hover {
+  opacity: 1 !important;
+}
+
+[data-sonner-toast][data-index="1"] {
+  transform: scaleX(0.96) !important;
+}
+[data-sonner-toast][data-index="2"] {
+  transform: scaleX(0.92) !important;
+}
+
+.pill:focus-visible,
+.plat:focus-visible {
+  outline: 2px solid var(--focus-control-ring);
+  outline-offset: 2px;
+}
+
+.comp-toggle-btn:focus-visible {
+  outline: 2px solid var(--focus-control-ring);
+  outline-offset: 2px;
+}

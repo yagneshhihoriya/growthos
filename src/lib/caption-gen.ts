@@ -211,3 +211,34 @@ export async function* streamCaptionJson(input: CaptionGenInput): AsyncGenerator
   }
   throw lastErr ?? new Error("Caption generation failed after retries");
 }
+
+/** Stream JSON text deltas using fully custom system + user prompts (e.g. redesigned caption form). */
+export async function* streamCaptionJsonCustom(system: string, user: string): AsyncGenerator<string> {
+  const apiKey = requireGeminiKey();
+  const ai = new GoogleGenAI({ apiKey });
+
+  const attempts: Array<{ model: string; delayMs: number }> = [
+    { model: CAPTION_MODEL, delayMs: 0 },
+    { model: CAPTION_MODEL, delayMs: 800 },
+    { model: CAPTION_MODEL, delayMs: 2000 },
+    { model: CAPTION_FALLBACK_MODEL, delayMs: 500 },
+  ];
+
+  let lastErr: unknown = null;
+  for (const { model, delayMs } of attempts) {
+    if (delayMs) await sleep(delayMs);
+    try {
+      const stream = await openStream(ai, model, system, user);
+      for await (const chunk of stream) {
+        const delta = textFromStreamChunk(chunk);
+        if (delta) yield delta;
+      }
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (!isTransient(err)) throw err;
+      console.warn(`[caption-gen] transient error on ${model} (custom prompt), retrying`, err);
+    }
+  }
+  throw lastErr ?? new Error("Caption generation failed after retries");
+}

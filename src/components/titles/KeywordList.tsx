@@ -1,17 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { KeywordRow } from "@/lib/title-pipeline";
 
 export function KeywordList({ keywords }: { keywords: KeywordRow[] }) {
-  const toast = useToast();
-
   async function copyKeyword(kw: string) {
     try {
       await navigator.clipboard.writeText(kw);
-      toast.success("Copied", kw);
+      toast.success("Copied", { description: kw });
     } catch {
       toast.error("Copy failed");
     }

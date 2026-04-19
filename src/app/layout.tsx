@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
+import { SonnerToaster } from "@/components/ui/sonner-toaster";
 
 export const metadata: Metadata = {
   title: "GrowthOS",
@@ -12,6 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-dvh bg-bg-base text-text-primary">
         <AppProviders>{children}</AppProviders>
+        <SonnerToaster />
       </body>
     </html>
   );

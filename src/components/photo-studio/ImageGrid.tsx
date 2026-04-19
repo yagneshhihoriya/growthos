@@ -3,11 +3,10 @@
 import * as React from "react";
 import { Search } from "lucide-react";
 import { ImageCard, type LibraryJob } from "@/components/photo-studio/ImageCard";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 export function ImageGrid({ refreshKey = 0 }: { refreshKey?: number }) {
-  const toast = useToast();
   const [jobs, setJobs] = React.useState<LibraryJob[]>([]);
   const [filter, setFilter] = React.useState<"all" | "today" | "week">("all");
   const [query, setQuery] = React.useState("");

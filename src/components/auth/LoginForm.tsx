@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AuthField } from "@/components/auth/AuthField";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { MetaButton } from "@/components/auth/MetaButton";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 
 export function LoginForm({
   googleEnabled,
@@ -19,7 +19,6 @@ export function LoginForm({
   metaEnabled: boolean;
 }) {
   const router = useRouter();
-  const toast = useToast();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -34,13 +33,13 @@ export function LoginForm({
         redirect: false,
       });
       if (res?.error) {
-        toast.error("Sign in failed", "Check your email and password.");
+        toast.error("Sign in failed", { description: "Check your email and password." });
         return;
       }
       router.push("/dashboard");
       router.refresh();
     } catch {
-      toast.error("Sign in failed", "Please try again.");
+      toast.error("Sign in failed", { description: "Please try again." });
     } finally {
       setLoading(false);
     }

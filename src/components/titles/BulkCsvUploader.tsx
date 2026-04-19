@@ -3,7 +3,7 @@
 import * as React from "react";
 import { AlertCircle, Download, FileSpreadsheet, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import { parseCSVHeaders } from "@/lib/csv-parse";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +52,6 @@ function formatEta(processed: number, total: number, startedAt: number | null): 
 }
 
 export function BulkCsvUploader() {
-  const toast = useToast();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [file, setFile] = React.useState<File | null>(null);
   const [clientError, setClientError] = React.useState<string | null>(null);
@@ -167,7 +166,7 @@ export function BulkCsvUploader() {
         pollIntervalRef.current = null;
       }
     };
-  }, [jobId, toast]);
+  }, [jobId]);
 
   React.useEffect(() => {
     if (!jobId || !job?.status) return;
@@ -176,19 +175,21 @@ export function BulkCsvUploader() {
     terminalToastJobId.current = jobId;
     if (job.status === "complete") {
       const failed = job.failedRows ?? 0;
-      toast.success(
-        "Bulk job finished",
-        failed > 0 ? `${failed} row(s) had errors — see below and download the output CSV.` : "Download your output CSV."
-      );
+      toast.success("Bulk job finished", {
+        description:
+          failed > 0
+            ? `${failed} row(s) had errors — see below and download the output CSV.`
+            : "Download your output CSV.",
+      });
     } else {
       const first = normalizeErrors(job.errorSummary)[0]?.error;
-      toast.error("Bulk job failed", first ?? "Check error details below.");
+      toast.error("Bulk job failed", { description: first ?? "Check error details below." });
     }
-  }, [jobId, job?.status, job?.failedRows, job?.errorSummary, toast]);
+  }, [jobId, job?.status, job?.failedRows, job?.errorSummary]);
 
   async function upload() {
     if (!file) {
-      toast.warning("No file", "Choose a CSV first.");
+      toast.warning("No file", { description: "Choose a CSV first." });
       return;
     }
     setUploading(true);
@@ -211,7 +212,10 @@ export function BulkCsvUploader() {
         progress: 0,
       });
       progressStartedAt.current = null;
-      toast.success("Queued", "Processing runs in the background worker (Gemini). This page will update every few seconds.");
+      toast.success("Queued", {
+        description:
+          "Processing runs in the background worker (Gemini). This page will update every few seconds.",
+      });
     } catch (e) {
       setClientError(e instanceof Error ? e.message : "Upload failed");
       toast.error(e instanceof Error ? e.message : "Upload failed");

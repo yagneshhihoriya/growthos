@@ -22,6 +22,7 @@ const bodySchema = z
     mode: z.enum(["edit", "create"]),
     prompt: z.string().min(1).max(5000),
     imageUrl: z.string().url().optional(),
+    productId: z.string().min(1).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.mode === "edit" && !data.imageUrl) {
@@ -43,8 +44,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: msg }, { status: 400 });
     }
 
-    const { mode, prompt, imageUrl } = parsed.data;
+    const { mode, prompt, imageUrl, productId } = parsed.data;
     const sellerId = session.user.id;
+
+    // If productId is provided, verify it belongs to this seller before associating.
+    // Silently drop on mismatch rather than 403 — the image still generates fine.
+    let resolvedProductId: string | null = null;
+    if (productId) {
+      const prod = await db.product.findFirst({
+        where: { id: productId, sellerId },
+        select: { id: true },
+      });
+      if (prod) resolvedProductId = prod.id;
+    }
 
     const originalUrlForJob =
       mode === "edit"
@@ -61,6 +73,7 @@ export async function POST(request: Request) {
       data: {
         sellerId,
         batchId: null,
+        productId: resolvedProductId,
         originalUrl: originalUrlForJob,
         status: "processing",
         options: { mode, prompt } as unknown as Prisma.JsonObject,

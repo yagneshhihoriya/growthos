@@ -42,10 +42,20 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl }: { beforeUrl: string; 
     if (e.key === "ArrowRight") setPct((p) => Math.min(100, p + 2));
   }
 
+  // Both layers: same paint path (clip-path on each <img>), translateZ for consistent GPU layers,
+  // and `isolation` on the container so stacked UI does not affect image compositing.
+  const sharedImgStyle: React.CSSProperties = {
+    imageRendering: "auto",
+    transform: "translateZ(0)",
+    backfaceVisibility: "hidden",
+    WebkitBackfaceVisibility: "hidden",
+  };
+
   return (
     <div
       ref={containerRef}
       className="relative aspect-square w-full touch-none overflow-hidden rounded-lg ring-1 ring-white/[0.06] select-none"
+      style={{ isolation: "isolate" }}
       tabIndex={0}
       role="slider"
       aria-valuemin={0}
@@ -55,17 +65,13 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl }: { beforeUrl: string; 
       onKeyDown={onKeyDown}
       onPointerDown={onPointerDown}
     >
-      {/* After (generated) fills the frame; "before" is clipped on top so left = before, right = after (matches labels).
-          Clip is applied directly to the <img> so both images render through the same paint path —
-          wrapping the before in an extra clipped <div> causes Chromium to rasterize that sublayer and
-          show it noticeably softer than the after image. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={afterUrl}
         alt="After"
         className="absolute inset-0 h-full w-full object-cover"
         draggable={false}
-        style={{ imageRendering: "auto" }}
+        style={{ ...sharedImgStyle, clipPath: `inset(0 0 0 ${pct}%)` }}
       />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -73,11 +79,11 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl }: { beforeUrl: string; 
         alt="Before"
         className="absolute inset-0 h-full w-full object-cover"
         draggable={false}
-        style={{ clipPath: `inset(0 ${100 - pct}% 0 0)`, imageRendering: "auto" }}
+        style={{ ...sharedImgStyle, clipPath: `inset(0 ${100 - pct}% 0 0)` }}
       />
 
-      <span className="pointer-events-none absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white/70 backdrop-blur-sm">Before</span>
-      <span className="pointer-events-none absolute right-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white/70 backdrop-blur-sm">After</span>
+      <span className="pointer-events-none absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white/70">Before</span>
+      <span className="pointer-events-none absolute right-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white/70">After</span>
 
       <div
         className="absolute top-0 z-10 h-full w-0.5 bg-white/50"
@@ -86,7 +92,7 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl }: { beforeUrl: string; 
       <button
         type="button"
         className={cn(
-          "absolute top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/50 text-[10px] font-bold text-white shadow-md backdrop-blur-sm"
+          "absolute top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/70 text-[10px] font-bold text-white shadow-md"
         )}
         style={{ left: `calc(${pct}% - 16px)` }}
         aria-label="Drag to compare"

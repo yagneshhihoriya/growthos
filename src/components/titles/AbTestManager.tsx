@@ -5,7 +5,7 @@ import { Copy, FlaskConical, Loader2, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { PLATFORM_CHAR_LIMITS, type PlatformKey } from "@/lib/title-pipeline";
 
@@ -62,7 +62,6 @@ export function AbTestManager({
   prefill: AbTestPrefill | null;
   onPrefillConsumed?: () => void;
 }) {
-  const toast = useToast();
   const [tests, setTests] = React.useState<AbTestRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [products, setProducts] = React.useState<ProductOption[]>([]);
@@ -101,7 +100,7 @@ export function AbTestManager({
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   React.useEffect(() => {
     void load();
@@ -139,7 +138,7 @@ export function AbTestManager({
 
   async function createTest() {
     if (!titleA.trim() || !titleB.trim()) {
-      toast.warning("Titles required", "Enter both Title A and Title B.");
+      toast.warning("Titles required", { description: "Enter both Title A and Title B." });
       return;
     }
     setCreating(true);
@@ -163,11 +162,13 @@ export function AbTestManager({
       const json = (await res.json()) as { error?: string; existingTestId?: string; test?: AbTestRow };
       if (res.status === 409) {
         setCreateError(json.error ?? "Active test exists");
-        toast.warning("Already running", json.error ?? "");
+        toast.warning("Already running", { description: json.error ?? "" });
         return;
       }
       if (!res.ok) throw new Error(json.error ?? "Create failed");
-      toast.success("Test started", "Use Title A on your listing, then record sales when the period ends.");
+      toast.success("Test started", {
+        description: "Use Title A on your listing, then record sales when the period ends.",
+      });
       setCompletePayload(null);
       setSalesInput("");
       await load();
@@ -183,7 +184,7 @@ export function AbTestManager({
       const res = await fetch(`/api/titles/ab-tests/${id}`, { method: "DELETE" });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(json.error ?? "Delete failed");
-      toast.success("Deleted", "A/B test removed.");
+      toast.success("Deleted", { description: "A/B test removed." });
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Delete failed");
@@ -221,7 +222,7 @@ export function AbTestManager({
       await load();
 
       if (json.phase === "switched_to_b") {
-        toast.success("Phase A saved", json.message ?? "");
+        toast.success("Phase A saved", { description: json.message ?? "" });
         setSalesInput("");
       } else if (json.phase === "complete") {
         setCompletePayload({
