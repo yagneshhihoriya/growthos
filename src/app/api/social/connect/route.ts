@@ -31,31 +31,33 @@ function signState(payload: string): string {
   return createHmac("sha256", stateSigningSecret()).update(payload).digest("base64url");
 }
 
-function buildState(sellerId: string, platform: "instagram" | "facebook"): string {
+function buildState(sellerId: string, platform: "instagram" | "facebook", returnTo?: string): string {
   const nonce = b64url(randomBytes(16));
   const expiresAt = Date.now() + STATE_TTL_MS;
-  const payload = `${platform}.${b64url(sellerId)}.${nonce}.${expiresAt}`;
+  const returnToB64 = b64url(returnTo ?? "/profile");
+  const payload = `${platform}.${b64url(sellerId)}.${nonce}.${expiresAt}.${returnToB64}`;
   const sig = signState(payload);
   return `${payload}.${sig}`;
 }
 
 function parseState(
   state: string
-): { platform: "instagram" | "facebook"; sellerId: string } | null {
+): { platform: "instagram" | "facebook"; sellerId: string; returnTo: string } | null {
   const parts = state.split(".");
-  if (parts.length !== 5) return null;
-  const [platform, sellerIdB64, nonce, expiresAtStr, sig] = parts;
+  if (parts.length !== 6) return null;
+  const [platform, sellerIdB64, nonce, expiresAtStr, returnToB64, sig] = parts;
   if (platform !== "instagram" && platform !== "facebook") return null;
   const expiresAt = Number(expiresAtStr);
   if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) return null;
-  const payload = `${platform}.${sellerIdB64}.${nonce}.${expiresAtStr}`;
+  const payload = `${platform}.${sellerIdB64}.${nonce}.${expiresAtStr}.${returnToB64}`;
   const expected = signState(payload);
   const a = Buffer.from(expected);
   const b = Buffer.from(sig);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
   try {
     const sellerId = Buffer.from(sellerIdB64, "base64url").toString("utf8");
-    return { platform, sellerId };
+    const returnTo = Buffer.from(returnToB64, "base64url").toString("utf8");
+    return { platform, sellerId, returnTo };
   } catch {
     return null;
   }
@@ -118,8 +120,10 @@ export async function GET(request: Request) {
       searchParams.get("error_message") ??
       oauthError ??
       "Facebook login was denied or failed.";
+    const errorReturnTo = state ? (parseState(state)?.returnTo ?? "/profile") : "/profile";
+    const sep = errorReturnTo.includes("?") ? "&" : "?";
     return NextResponse.redirect(
-      new URL(`/profile?error=${encodeURIComponent(detail)}`, request.url)
+      new URL(`${errorReturnTo}${sep}error=${encodeURIComponent(detail)}`, request.url)
     );
   }
 
@@ -127,15 +131,17 @@ export async function GET(request: Request) {
     return handleCallback(request, session.user.id, code, state);
   }
 
+  const returnTo = searchParams.get("returnTo") ?? undefined;
+
   if (platform === "instagram" || platform === "facebook") {
-    return initiateConnect(session.user.id, platform);
+    return initiateConnect(session.user.id, platform, returnTo);
   }
 
   return NextResponse.json({ error: "Missing platform parameter" }, { status: 400 });
 }
 
-async function initiateConnect(sellerId: string, platform: "instagram" | "facebook") {
-  const signedState = buildState(sellerId, platform);
+async function initiateConnect(sellerId: string, platform: "instagram" | "facebook", returnTo?: string) {
+  const signedState = buildState(sellerId, platform, returnTo);
 
   const redirectUri = `${BASE_URL()}/api/social/connect`;
   const authUrl = new URL("https://www.facebook.com/v19.0/dialog/oauth");
@@ -154,6 +160,7 @@ async function handleCallback(request: Request, sellerId: string, code: string, 
     return NextResponse.redirect(new URL("/dashboard?error=csrf_mismatch", request.url));
   }
   const stored = { sellerId: parsed.sellerId, platform: parsed.platform };
+  const returnTo = parsed.returnTo || "/profile";
 
   try {
     const redirectUri = `${BASE_URL()}/api/social/connect`;
@@ -287,13 +294,15 @@ async function handleCallback(request: Request, sellerId: string, code: string, 
     }
 
     const connectedList = platformsToWire.join(",");
+    const separator = returnTo.includes("?") ? "&" : "?";
     return NextResponse.redirect(
-      new URL(`/profile?connected=${connectedList}`, request.url)
+      new URL(`${returnTo}${separator}connected=${connectedList}`, request.url)
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Connection failed";
+    const separator = returnTo.includes("?") ? "&" : "?";
     return NextResponse.redirect(
-      new URL(`/profile?error=${encodeURIComponent(msg)}`, request.url)
+      new URL(`${returnTo}${separator}error=${encodeURIComponent(msg)}`, request.url)
     );
   }
 }

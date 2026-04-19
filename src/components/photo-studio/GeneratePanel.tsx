@@ -50,8 +50,14 @@ export function GeneratePanel({ onGenerationComplete }: { onGenerationComplete?:
         toast.error("Generation failed", msg);
         return;
       }
-      const { generatedUrl } = json as { generatedUrl: string; jobId: string };
-      const originalForCompare = mode === "edit" ? imageUrl! : "";
+      const { generatedUrl, originalUrl: apiOriginalUrl } = json as {
+        generatedUrl: string;
+        originalUrl?: string;
+        jobId: string;
+      };
+      // Prefer the viewer-path URL returned by the API (works for private S3 buckets).
+      // Fall back to the raw upload URL only if the API didn't provide one.
+      const originalForCompare = mode === "edit" ? (apiOriginalUrl ?? imageUrl!) : "";
       setResult({ generatedUrl, originalUrl: originalForCompare });
       onGenerationComplete?.();
       toast.success("Ready", "Your image is ready to download.");

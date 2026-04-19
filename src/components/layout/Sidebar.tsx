@@ -55,11 +55,10 @@ const tools: NavItem[] = [
     soon: true,
   },
   {
-    href: "#",
+    href: "/title-optimizer",
     label: "Title Optimizer",
     icon: <PenLine className="h-5 w-5" />,
     featureClass: "text-feature-titles",
-    soon: true,
   },
   {
     href: "#",

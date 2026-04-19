@@ -55,13 +55,26 @@ export function BeforeAfterSlider({ beforeUrl, afterUrl }: { beforeUrl: string; 
       onKeyDown={onKeyDown}
       onPointerDown={onPointerDown}
     >
-      {/* After (generated) fills the frame; clipped "before" sits on top so left = before, right = after (matches labels). */}
+      {/* After (generated) fills the frame; "before" is clipped on top so left = before, right = after (matches labels).
+          Clip is applied directly to the <img> so both images render through the same paint path —
+          wrapping the before in an extra clipped <div> causes Chromium to rasterize that sublayer and
+          show it noticeably softer than the after image. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={afterUrl} alt="After" className="absolute inset-0 h-full w-full object-cover" draggable={false} />
-      <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 ${100 - pct}% 0 0)` }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={beforeUrl} alt="Before" className="absolute inset-0 h-full w-full object-cover" draggable={false} />
-      </div>
+      <img
+        src={afterUrl}
+        alt="After"
+        className="absolute inset-0 h-full w-full object-cover"
+        draggable={false}
+        style={{ imageRendering: "auto" }}
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={beforeUrl}
+        alt="Before"
+        className="absolute inset-0 h-full w-full object-cover"
+        draggable={false}
+        style={{ clipPath: `inset(0 ${100 - pct}% 0 0)`, imageRendering: "auto" }}
+      />
 
       <span className="pointer-events-none absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white/70 backdrop-blur-sm">Before</span>
       <span className="pointer-events-none absolute right-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white/70 backdrop-blur-sm">After</span>

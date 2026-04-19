@@ -91,7 +91,7 @@ export async function POST(request: Request) {
         },
       });
 
-      return NextResponse.json({ generatedUrl, jobId: job.id });
+      return NextResponse.json({ generatedUrl, originalUrl: originalUrlForJob, jobId: job.id });
     } catch (err) {
       const message = formatGeminiApiError(err) || "Generation failed";
       console.error("[api/images/generate]", message, err);

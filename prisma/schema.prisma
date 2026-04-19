@@ -35,6 +35,9 @@ model Seller {
   socialPosts         SocialPost[]
   postAnalytics       PostAnalytic[]
   autopilotCalendars  AutopilotCalendar[]
+  titleOptimizations   TitleOptimization[]
+  abTests              AbTest[]
+  bulkTitleJobs        BulkTitleJob[]
 
   @@index([email])
   @@index([googleId])
@@ -132,10 +135,86 @@ model Product {
   seller          Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   imageJobs       ImageJob[]
   socialPosts     SocialPost[]
+  titleOptimizations TitleOptimization[]
+  abTests            AbTest[]
 
   @@index([sellerId])
   @@index([sellerId, category])
   @@index([isActive])
+}
+
+model TitleOptimization {
+  id                  String    @id @default(cuid())
+  sellerId            String
+  productId           String?
+  originalTitle       String?   @db.Text
+  originalScore       Int?
+  optimizedTitles     Json
+  optimizedScore      Int?
+  scoreBreakdown      Json?
+  description         String?   @db.Text
+  bulletPoints        String[]
+  keywordsUsed        String[]
+  keywordData         Json?
+  competitorAnalysis  Json?
+  language            String    @default("hinglish")
+  version             Int       @default(1)
+  isApplied           Boolean   @default(false)
+  appliedAt           DateTime?
+  appliedPlatforms    String[]  @default([])
+  createdAt           DateTime  @default(now())
+  seller              Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  product             Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  abTests             AbTest[]
+
+  @@index([sellerId])
+  @@index([productId])
+}
+
+model AbTest {
+  id               String    @id @default(cuid())
+  sellerId         String
+  productId        String?
+  optimizationId   String?
+  titleA           String    @db.Text
+  titleB           String    @db.Text
+  salesA           Int       @default(0)
+  salesB           Int       @default(0)
+  daysA            Int       @default(14)
+  daysB            Int       @default(14)
+  currentVariant   String    @default("A")
+  status           String    @default("running_a")
+  winner           String?
+  winnerTitle      String?   @db.Text
+  platform         String    @default("meesho")
+  startedAt        DateTime  @default(now())
+  phaseAEndedAt    DateTime?
+  endedAt          DateTime?
+  seller           Seller             @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  product          Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
+  optimization     TitleOptimization? @relation(fields: [optimizationId], references: [id], onDelete: SetNull)
+
+  @@index([sellerId])
+  @@index([status])
+}
+
+model BulkTitleJob {
+  id             String    @id @default(cuid())
+  sellerId       String
+  status         String    @default("pending")
+  totalRows      Int
+  processedRows  Int       @default(0)
+  failedRows     Int       @default(0)
+  inputFileUrl   String
+  outputFileUrl  String?
+  errorSummary   Json?
+  language       String    @default("hinglish")
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
+  seller         Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+  @@index([status])
 }
 
 model SocialPost {

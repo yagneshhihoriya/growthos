@@ -21,11 +21,27 @@ function sleep(ms: number): Promise<void> {
 export type CaptionGenInput = {
   productName: string;
   category: string;
+  /** Optional canonical super-category for category-aware prompting. */
+  superCategory?: string;
   price: number;
-  colors: string[];
-  sizes: string[];
+  /** Clothing / footwear / bags / etc. */
+  colors?: string[];
+  sizes?: string[];
   fabric?: string;
   occasion?: string[];
+  /** Electronics / home / bags / pets. */
+  specs?: Record<string, string>;
+  dimensions?: string;
+  /** Electronics + beauty/food/health + home. */
+  weight?: string;
+  /** Beauty / food / health. */
+  ingredients?: string;
+  /** Marketing angle (works for any category). */
+  highlight?: string;
+  audience?: string[];
+  offer?: string;
+  cta?: string;
+  platformTarget?: "instagram" | "facebook" | "both";
   language: "hindi" | "hinglish" | "english";
   tone: "casual" | "urgent" | "festive" | "premium";
   includeHashtags: boolean;
@@ -38,36 +54,90 @@ function requireGeminiKey(): string {
   return key;
 }
 
+const CATEGORY_HOOK_GUIDE: Record<string, string> = {
+  clothing: "fit, fabric, drape, occasion styling, size inclusivity",
+  electronics: "standout spec (battery/camera/storage), performance, warranty, value-for-price",
+  beauty: "visible benefits, key ingredients, skin/hair concern it solves, texture/feel",
+  footwear: "comfort, grip, style occasion, everyday wearability",
+  bags: "capacity, material feel, style versatility, organiser pockets",
+  jewellery: "craftsmanship, metal/stone, occasion, gifting appeal",
+  home: "material quality, size fit for rooms, aesthetic vibe, durability",
+  food: "flavour, freshness, region/authenticity, weight/serving",
+  health: "benefit, clinical/ayurvedic angle, dosage, certification",
+  kids: "safety, age range, learning/fun value, durability",
+  stationery: "build quality, use case, aesthetic, value pack",
+  pets: "pet size suitability, safety, freshness/durability",
+  general: "one concrete benefit, price fairness, trust + COD",
+};
+
+function buildDetailsBlock(input: CaptionGenInput): string {
+  const lines: string[] = [];
+  lines.push(`Product: ${input.productName}`);
+  lines.push(
+    `Category: ${input.category}${input.superCategory ? ` (super-category: ${input.superCategory})` : ""}`
+  );
+  lines.push(`Price: ₹${input.price}`);
+  if (input.colors?.length) lines.push(`Colors: ${input.colors.join(", ")}`);
+  if (input.sizes?.length) lines.push(`Sizes: ${input.sizes.join(", ")}`);
+  if (input.fabric) lines.push(`Fabric: ${input.fabric}`);
+  if (input.occasion?.length) lines.push(`Occasion: ${input.occasion.join(", ")}`);
+  if (input.specs && Object.keys(input.specs).length) {
+    lines.push("Key specs:");
+    for (const [k, v] of Object.entries(input.specs)) lines.push(`- ${k}: ${v}`);
+  }
+  if (input.weight) lines.push(`Weight/volume: ${input.weight}`);
+  if (input.dimensions) lines.push(`Dimensions: ${input.dimensions}`);
+  if (input.ingredients) lines.push(`Ingredients / benefits: ${input.ingredients}`);
+  return lines.join("\n");
+}
+
+function buildMarketingBlock(input: CaptionGenInput): string {
+  const lines: string[] = [];
+  if (input.highlight) lines.push(`- Highlight / USP to emphasize: ${input.highlight}`);
+  if (input.audience?.length) lines.push(`- Target audience: ${input.audience.join(", ")}`);
+  if (input.offer) lines.push(`- Offer / discount: ${input.offer}`);
+  if (input.cta) lines.push(`- Primary call-to-action: ${input.cta}`);
+  if (input.platformTarget) lines.push(`- Primary platform: ${input.platformTarget}`);
+  return lines.length ? `Marketing angle:\n${lines.join("\n")}` : "";
+}
+
 function buildPrompts(input: CaptionGenInput): { system: string; user: string } {
-  const system = `You are an expert social media copywriter for Indian clothing sellers on Meesho, Flipkart, and Instagram.
+  const hookGuide = CATEGORY_HOOK_GUIDE[input.superCategory ?? "general"] ?? CATEGORY_HOOK_GUIDE.general;
+  const platformNote =
+    input.platformTarget === "facebook"
+      ? "Facebook-friendly copy (slightly longer, fewer hashtags — max 8)."
+      : input.platformTarget === "both"
+        ? "Usable on both Instagram and Facebook — keep length ≤ 220 chars."
+        : "Instagram-first: short, punchy, emoji-light.";
+
+  const system = `You are an expert social media copywriter for Indian D2C and marketplace sellers on Instagram, Facebook, Meesho, and Flipkart.
 You write captions that feel natural, conversational, and authentic — never corporate or translated.
-You understand Indian fashion culture, COD buying behaviour, and WhatsApp-first commerce.
+You understand Indian shopping culture, COD buying behaviour, and WhatsApp-first commerce.
+You tailor the hook to the product category — for this product, emphasize: ${hookGuide}.
 You always write in ${input.language} — Hinglish means mixing Hindi and English naturally as Indian sellers actually speak.
-You know that Indian clothing buyers respond to: urgency, limited stock, COD availability, festival context, and size inclusivity.`;
+Indian buyers respond to: urgency, limited stock, COD availability, festival context, and a clear concrete benefit over vague praise.`;
 
   const hashtagRule = input.includeHashtags
-    ? `- After each caption, add 20 hashtags on a new line: mix broad (5), category (5), niche (5), location (3), trending (2)`
+    ? `- After each caption, add 15-20 hashtags in the \`hashtags\` array: mix broad (4), category (5), niche (4), location (3), trending (2)`
     : `- Do not include hashtags in the JSON (use empty arrays)`;
 
-  const user = `Generate exactly 3 Instagram/Facebook caption variants for this product. Each must be different in tone and hook.
+  const marketingBlock = buildMarketingBlock(input);
 
-Product: ${input.productName}
-Category: ${input.category}
-Price: ₹${input.price}
-Colors: ${input.colors.join(", ")}
-Sizes: ${input.sizes.join(", ")}
-${input.fabric ? `Fabric: ${input.fabric}` : ""}
-${input.occasion?.length ? `Occasion: ${input.occasion.join(", ")}` : ""}
+  const user = `Generate exactly 3 caption variants for this product. Each must be different in tone and hook.
+
+${buildDetailsBlock(input)}
 Seller city: ${input.sellerCity}
 Tone: ${input.tone}
 Language: ${input.language}
-
+${marketingBlock ? `\n${marketingBlock}\n` : ""}
 Rules:
-- Each caption under 220 characters (Instagram limit is 2200 but shorter converts better)
-- Include 1-2 relevant emojis naturally — not forced
-- Always mention COD availability naturally
-- Always end with a soft CTA (DM, link in bio, WhatsApp)
-- Never use "premium quality" or "best product" — too generic
+- ${platformNote}
+- Each caption under 220 characters.
+- Include 1-2 relevant emojis naturally — not forced.
+- Always mention COD availability naturally.
+- End with the primary call-to-action above (fallback: DM / link in bio / WhatsApp).
+- If an offer is given, make ONE of the three variants lead with it.
+- Never use generic filler like "premium quality" or "best product".
 ${hashtagRule}
 
 Return ONLY valid JSON in this exact format, nothing else:

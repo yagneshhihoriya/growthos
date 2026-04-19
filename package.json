@@ -13,6 +13,7 @@
     "db:push:all": "npm run db:push:local && npm run db:push",
     "worker:image": "tsx src/workers/image-processor.ts",
     "worker:social": "tsx src/workers/social-scheduler.ts",
+    "worker:bulk-titles": "tsx src/workers/bulk-title-processor.ts",
     "crypto:roundtrip": "tsx scripts/crypto-roundtrip.ts"
   },
   "dependencies": {
@@ -39,6 +40,7 @@
     "axios": "^1.8.4",
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.48.1",
+    "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -61,6 +63,7 @@
   },
   "devDependencies": {
     "@types/archiver": "^6.0.3",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

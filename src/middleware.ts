@@ -28,7 +28,8 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/profile") ||
     path.startsWith("/settings") ||
     path.startsWith("/connections") ||
-    path.startsWith("/social-posts");
+    path.startsWith("/social-posts") ||
+    path.startsWith("/title-optimizer");
   if (isApp && !isLoggedIn) {
     return NextResponse.redirect(new URL("/login", request.url));
   }

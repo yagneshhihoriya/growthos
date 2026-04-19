@@ -33,7 +33,10 @@ export function SocialConnectCard({
   async function handleConnect() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/social/connect?platform=${platform}`);
+      const returnTo = window.location.pathname + window.location.search;
+      const res = await fetch(
+        `/api/social/connect?platform=${platform}&returnTo=${encodeURIComponent(returnTo)}`
+      );
       const json = (await res.json()) as { authUrl?: string; error?: string };
       if (!res.ok || !json.authUrl) {
         toast.error("Connection failed", json.error ?? "Could not start OAuth flow");

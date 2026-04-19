@@ -20,6 +20,7 @@ Next.js 14 App Router + Prisma + NextAuth v5 + S3 + Redis/BullMQ. Photo Studio u
 | Library + delete | `src/app/api/images/library/route.ts`, `src/app/api/images/library/[jobId]/route.ts` |
 | Photo Studio UI | `src/components/photo-studio/*`, `src/app/(dashboard)/photo-studio/**` |
 | Social posts (IG/FB) | `src/app/(dashboard)/social-posts`, `src/components/social/*`, `src/app/api/social/**`, `src/app/api/cron/**`, `src/lib/meta-post.ts`, `src/workers/social-scheduler.ts` |
+| Title Optimizer | `src/app/(dashboard)/title-optimizer`, `src/components/titles/*`, `src/app/api/titles/**`, `src/lib/title-pipeline.ts` (Gemini; optional `SCRAPER_API_KEY`). Phase B: A/B tests (`/api/titles/ab-tests/**`), bulk CSV (`/api/titles/bulk/**`, template `GET /api/titles/bulk/template`), worker `src/workers/bulk-title-processor.ts` |
 | Dashboard shell | `src/components/layout/DashboardShell.tsx`, `Sidebar.tsx` |
 
 ## Product notes
@@ -35,6 +36,7 @@ Next.js 14 App Router + Prisma + NextAuth v5 + S3 + Redis/BullMQ. Photo Studio u
 - `npm run db:push:all` — push to both local + Neon (run after every `prisma/schema.prisma` change)
 - `npm run worker:image` — image worker (if used)
 - `npm run worker:social` — BullMQ ticks calling `/api/cron/*` (needs `REDIS_URL`, `CRON_SECRET`, app running)
+- `npm run worker:bulk-titles` — processes `bulk-title` queue for CSV bulk jobs (needs `REDIS_URL`, `GEMINI_API_KEY`, S3)
 
 Note: dev runtime uses `.env.local` (local Postgres); Prisma CLI default uses `.env` (Neon). Always run `db:push:all` on schema changes to keep both in sync.
 

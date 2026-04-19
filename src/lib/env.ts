@@ -29,6 +29,10 @@ const serverSchema = z.object({
   EMAIL_FROM: z.string().optional(),
   CRON_SECRET: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
+  GEMINI_TITLE_MODEL: z.string().optional(),
+  GEMINI_TITLE_FALLBACK_MODEL: z.string().optional(),
+  /** ScraperAPI for competitor title scraping (optional; mock data when unset). */
+  SCRAPER_API_KEY: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverSchema>;
